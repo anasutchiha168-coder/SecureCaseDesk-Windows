@@ -7,6 +7,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statS
 import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { applyRnwPatch } from './lib/patch-rnw.mjs';
 import { STAGE_COPY, WEB_DEPS, buildStagedAppJson, buildMetroConfig, patchIndexHtml, verifyWebDist } from './lib/stage.mjs';
 
 const desktop = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -54,9 +55,13 @@ if (!args.has('--skip-install')) {
   run('npx', ['expo', 'install', ...WEB_DEPS]);
 }
 
-// 3) التصدير
+// 2.5) حقن بدائل Windows داخل react-native-web نفسها.
+// (Expo يحوّل react-native إلى react-native-web قبل محلّل Metro المخصّص، فلا يمكن الاعتماد على المحلّل وحده.)
+try { applyRnwPatch(stage); } catch (e) { console.error('✘ تعذّر تعديل react-native-web: ' + e.message); process.exit(1); }
+
+// 3) التصدير (--clear: يتجاهل كاش Metro كي لا تُستعمل نسخة غير معدّلة)
 rmSync(join(stage, 'dist'), { recursive: true, force: true });
-run('npx', ['expo', 'export', '--platform', 'web', '--output-dir', 'dist']);
+run('npx', ['expo', 'export', '--platform', 'web', '--output-dir', 'dist', '--clear']);
 
 // 4) النشر إلى web-dist
 const dist = join(stage, 'dist');

@@ -44,7 +44,7 @@ test('react-native.tsx يصدّر كل ما صُنّف shim ويضبط RTL وي�
 });
 
 test('لا shim يستورد من src ولا يستعمل Node/require (يعمل داخل الواجهة المعزولة)', () => {
-  for (const f of ['react-native.tsx', 'web-alert.ts', 'web-share.ts', 'web-i18n.ts', 'alert-core.ts']) {
+  for (const f of ['react-native.tsx', 'rnw-extras.ts', 'web-alert.ts', 'web-share.ts', 'web-i18n.ts', 'alert-core.ts']) {
     const s = readFileSync(path.join(desktop, 'shims', f), 'utf8');
     assert.ok(!/from\s+['"][./]*\/?src\//.test(s) && !s.includes("'@/"), f + ' يستورد من src');
     assert.ok(!/require\(|node:|process\./.test(s), f + ' يستعمل Node');
