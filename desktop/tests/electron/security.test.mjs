@@ -64,3 +64,15 @@ test('CSP: بلا unsafe-eval ولا unsafe-inline للسكربت، وlockdown �
   assert.ok(!/https?:\/\//.test(csp), 'لا مصادر خارجية');
   assert.ok(sec.SECURITY_HEADERS['X-Content-Type-Options'] === 'nosniff');
 });
+
+test('APP_ENTRY هو app://bundle/ (لا /index.html) كي يطابق expo-router الشاشة الرئيسية', () => {
+  assert.equal(sec.APP_ENTRY, 'app://bundle/');
+  assert.equal(new URL(sec.APP_ENTRY).pathname, '/');
+  assert.ok(sec.isTrustedUrl(sec.APP_ENTRY));
+  const root = path.resolve('/tmp/scd-root');
+  const files = new Set([path.join(root, 'index.html')]);
+  const fsImpl = { statSync: (p) => { if (files.has(p)) return { isFile: () => true }; throw new Error('ENOENT'); } };
+  const r = sec.resolveRequest(root, '/', fsImpl);
+  assert.equal(r.status, 200);
+  assert.equal(r.file, path.join(root, 'index.html'));
+});

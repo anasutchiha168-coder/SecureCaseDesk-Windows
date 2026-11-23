@@ -5,7 +5,9 @@ const path = require('node:path');
 const APP_SCHEME = 'app';
 const APP_HOST = 'bundle';
 const APP_ORIGIN = `${APP_SCHEME}://${APP_HOST}`;
-const APP_ENTRY = `${APP_ORIGIN}/index.html`;
+// المسار '/' وليس '/index.html': expo-router يقرأ location.pathname، و'/index.html' لا يطابق أي شاشة (Unmatched Route).
+// معالج البروتوكول يخدم index.html لأي مسار بلا امتداد (resolveRequest).
+const APP_ENTRY = `${APP_ORIGIN}/`;
 
 // يُقبل مصدر التطوير فقط عندما يُمرَّر صراحةً (والتطبيق غير مُحزَّم) وعلى localhost حصراً.
 function parseDevUrl(raw, packaged) {

@@ -13,7 +13,7 @@
   check('shim react-native هو المُحمَّل', window.__SCD_RN_WEB__ && window.__SCD_RN_WEB__.shim === 1 && window.__SCD_RN_WEB__.rtl === true, 'لا __SCD_RN_WEB__');
   check('اتجاه المستند RTL وlang=ar', document.documentElement.dir === 'rtl' && document.documentElement.lang === 'ar', document.documentElement.dir + '/' + document.documentElement.lang);
   check('الواجهة رُسمت داخل #root', !!(root && root.childNodes.length > 0), '#root فارغ');
-  check('عقدة RN-web الجذرية dir=rtl', !!document.querySelector('#root [dir="rtl"]'), 'لا عنصر dir=rtl داخل الجذر');
+  check('عقدة RN-web الجذرية dir=rtl', !!document.querySelector('#root [dir="rtl"]'), 'لا عنصر dir=rtl داخل الجذر | path=' + location.pathname + ' | root=' + ((root && root.innerHTML) || '').slice(0, 160));
   check('crypto.subtle وrandomUUID متاحان (سياق آمن)', !!(window.crypto && crypto.subtle && typeof crypto.randomUUID === 'function' && crypto.randomUUID().length === 36), 'السياق غير آمن');
 
   var fontsLoaded = [];
