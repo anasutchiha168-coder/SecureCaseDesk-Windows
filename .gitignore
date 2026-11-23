@@ -1,0 +1,64 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
+
+# نسخ احتياطية مؤقتة من سكربتات التعديل
+*.bak
+*.bak-*
+.backup_phase8_section3/
+
+# نسخ احتياطية بطابع زمني من سكربتات التعديل
+*.bak_*
+
+# المرحلة 10: ملفات النسخ الاحتياطي المشفرة لا تدخل المستودع أبداً
+*.scdbak
+*.scdbak.tmp
+
+# SECURECASEDESK_PHASE12_S1: مخرجات البناء والتوقيع لا تدخل المستودع أبداً
+*.apk
+*.aab
+*.apks
+credentials.json
+artifacts/
+tools/legacy-cleanup/
+_cleanup_*/
+*.pre_stageB
+*.pre_phase3
