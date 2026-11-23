@@ -1,0 +1,89 @@
+{
+  "_comment": "كل وحدة أصلية تستوردها src وكيف تُعالَج على Windows. shim = يُستبدل عبر Metro عند platform=web وSCD_TARGET=windows دون تعديل src.",
+  "modules": {
+    "expo-file-system": {
+      "action": "shim",
+      "file": "expo-file-system.ts",
+      "section": 5
+    },
+    "expo-sqlite": {
+      "action": "shim",
+      "file": "expo-sqlite.ts",
+      "section": 6
+    },
+    "expo-secure-store": {
+      "action": "shim",
+      "file": "expo-secure-store.ts",
+      "section": 7
+    },
+    "expo-local-authentication": {
+      "action": "shim",
+      "file": "expo-local-authentication.ts",
+      "section": 7
+    },
+    "expo-print": {
+      "action": "shim",
+      "file": "expo-print.ts",
+      "section": 5
+    },
+    "expo-sharing": {
+      "action": "shim",
+      "file": "expo-sharing.ts",
+      "section": 5
+    },
+    "expo-document-picker": {
+      "action": "shim",
+      "file": "expo-document-picker.ts",
+      "section": 5
+    },
+    "expo-updates": {
+      "action": "shim",
+      "file": "expo-updates.ts",
+      "section": 2
+    },
+    "expo-crypto": {
+      "action": "native-web",
+      "section": 3,
+      "note": "له تنفيذ ويب مدمج؛ يُتحقق منه في القسم 3 (randomUUID/getRandomBytes/digestStringAsync)"
+    },
+    "expo-router": {
+      "action": "native-web",
+      "section": 3
+    },
+    "expo-font": {
+      "action": "native-web",
+      "section": 3
+    },
+    "react-native": {
+      "action": "native-web",
+      "section": 3,
+      "note": "react-native-web"
+    },
+    "react-native-safe-area-context": {
+      "action": "native-web",
+      "section": 3
+    },
+    "react-native-svg": {
+      "action": "native-web",
+      "section": 3
+    },
+    "lucide-react-native": {
+      "action": "native-web",
+      "section": 3
+    },
+    "@expo-google-fonts/cairo": {
+      "action": "native-web",
+      "section": 3
+    },
+    "@noble/hashes": {
+      "action": "pure-js"
+    },
+    "@noble/ciphers": {
+      "action": "pure-js"
+    },
+    "react": {
+      "action": "native-web",
+      "section": 3
+    }
+  }
+}

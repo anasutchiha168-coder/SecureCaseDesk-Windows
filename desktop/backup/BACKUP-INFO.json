@@ -1,0 +1,16 @@
+{
+  "createdAt": "2026-11-23",
+  "purpose": "نسخة احتياطية قبل إنشاء مجلد desktop (القسم 1 من خطة Windows EXE)",
+  "uploadedZipSha256": "ed4cc3768109e733b97a58efaacd251c52c13d301a9958e39519b2db1c535228",
+  "archive": "SecureCaseDesk-original.zip",
+  "manifest": "SHA256SUMS.original.txt",
+  "manifestFiles": 247,
+  "manifestBytes": 11012409,
+  "srcFiles": 143,
+  "excluded": [
+    ".git",
+    "node_modules",
+    "desktop"
+  ],
+  "note": "android/ غير موجود في المستودع أصلاً (Expo CNG يولّده عند البناء)؛ لذلك لا توجد ملفات Android أصلية لحمايتها سوى app.json وeas.json وworkflows."
+}
