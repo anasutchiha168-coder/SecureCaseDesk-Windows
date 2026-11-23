@@ -5,7 +5,7 @@
 // لا يستورد هذا الملف react-native-web أبداً (يستلم View وAppRegistry وcreateElement كمعاملات) فلا توجد حلقة استيراد.
 import { showAlert } from './web-alert';
 import { createShare, browserShareEnv } from './web-share';
-import { I18nManagerWeb, DevSettingsWeb, StatusBarWeb } from './web-i18n';
+import { I18nManagerWeb, DevSettingsWeb, StatusBarWeb, installRtlDomGuard } from './web-i18n';
 
 export interface RnwCore {
   View: any;
@@ -20,11 +20,12 @@ export function createScdExtras(core: RnwCore) {
   // عدّادات تشخيصية يقرؤها فحص Electron الدخاني عند فشل فحص dir=rtl.
   // كائن واحد مشترك على globalThis كي لا تضيع العدّادات لو استُدعيت الدالة أكثر من مرة.
   const g = globalThis as any;
-  const diag = g.__SCD_RN_DIAG ?? (g.__SCD_RN_DIAG = { registered: 0, rendered: 0, patchedRegistry: false, hasRegistry: false });
+  const diag = g.__SCD_RN_DIAG ?? (g.__SCD_RN_DIAG = { registered: 0, rendered: 0, patchedRegistry: false, hasRegistry: false, domRoot: 0 });
   diag.hasRegistry = diag.hasRegistry || !!core.AppRegistry;
   if (typeof document !== 'undefined') {
     document.documentElement.setAttribute('dir', 'rtl');
     document.documentElement.setAttribute('lang', 'ar');
+    installRtlDomGuard(document);
   }
 
   const registry = core.AppRegistry;

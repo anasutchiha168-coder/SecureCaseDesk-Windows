@@ -45,3 +45,21 @@
 اللفّ غير المزدوج، تعايشه مع لفّ AppRegistry، ضبط السمات، المحلّل يحوّل safe-area على web+windows فقط ويستثني الـ shim ولا يمسّ android/ios)، و`tsc --strict` نظيف على الملفين الجديدين.
 **لم يُشغَّل:** `expo export` والفحص الدخاني على الحزمة الحقيقية (المعيار الحقيقي: workflow `desktop-section3.yml` على windows-latest). لا أعرف مسبقاً أن react-native-web
 يمرّر `dir` من `View` إلى DOM؛ ضبط السمة عبر `ref` يضمن عقدة `dir="rtl"` في كل الأحوال، لكن قلب `left/right` برمجياً (سياق react-native-web) يتحقق منه القسم 4.
+
+---
+
+# إصلاح 3: فحص `عقدة RN-web الجذرية dir=rtl` ما زال يفشل بعد إصلاح 2
+
+**العَرَض (GitHub Actions، run #5):** `diag={"registered":0,"rendered":0,"patchedRegistry":true,"hasRegistry":true,"rtlRoot":0,"rtlRootNested":0}`
+و`chain=div[dir=-] > div[dir=-] > div[dir=auto]`. أي أن **الطريقتين** (لفّ `AppRegistry.registerComponent` ولفّ `SafeAreaProvider`) لم تصلا للشجرة المرسومة،
+بينما `createScdExtras` نفسها شُغِّلت (patchedRegistry=true). السبب الدقيق لم أستطع تحديده دون الحزمة المبنية (بيئتي بلا شبكة)، فلم أعد أراهن على مسار تركيب بعينه.
+
+**الإصلاح (طبقتان لا تعتمدان على طريقة تركيب Expo):**
+- **A — حارس DOM** (`installRtlDomGuard` في `shims/web-i18n.ts`، يُستدعى من `createScdExtras` التي ثبت أنها تعمل): يضبط `dir="rtl" lang="ar"` على عقدة react-native-web الجذرية داخل `#root`
+  فور ظهورها وعند أي إعادة إنشاء (MutationObserver على أبناء `#root` فقط). عدّاد جديد في التشخيص: `domRoot`.
+- **B — سياق react-native-web** (`patchLocaleDefault` في `scripts/lib/patch-rnw.mjs`): يحوّل `defaultLocale.direction` من `ltr` إلى `rtl` في `useLocale` (ESM وCJS) داخل `desktop/.stage` فقط،
+  فيقلب RNW يسار/يمين دون أي جذر React. إن اختلفت صيغة الملف يُتخطّى بتحذير ولا يتوقف البناء (يبقى A).
+- **web-probe.js:** يطبع `html=` (أول 240 حرفاً من #root) عند الفشل، وسطراً معلوماتياً `سياق RTL داخل React` يبيّن هل نجحت طبقة React (rendered/rtlRoot/locale). `·` فيه لا يُفشل الفحص.
+
+**ملاحظة صريحة:** فحص `dir=rtl` الصارم صار يُضمَن بطبقة DOM، وهو يثبت وجود السمة لا صحة قلب التخطيط. صحة القلب (يسار/يمين) تُفحص في القسم 4.
+**لم يُشغَّل هنا:** `expo export` والفحص الدخاني الحقيقي (المعيار: workflow `desktop-section3.yml` على windows-latest).

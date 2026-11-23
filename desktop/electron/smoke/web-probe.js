@@ -20,7 +20,10 @@
   var rtlUntil = Date.now() + 5000; // مهلة قصيرة: قد يتأخر رسم الجذر لحظات بعد أول عقدة
   while (!document.querySelector('#root [dir="rtl"]') && Date.now() < rtlUntil) await sleep(250);
   var rtlNode = document.querySelector('#root [dir="rtl"]');
-  check('عقدة RN-web الجذرية dir=rtl', !!rtlNode, 'path=' + location.pathname + ' | diag=' + diagInfo + ' | chain=' + chain.join(' > ') + ' | rootChildren=' + (root ? root.childNodes.length : 0));
+  check('عقدة RN-web الجذرية dir=rtl', !!rtlNode, 'path=' + location.pathname + ' | diag=' + diagInfo + ' | chain=' + chain.join(' > ') + ' | rootChildren=' + (root ? root.childNodes.length : 0) + ' | html=' + String((root && root.innerHTML) || '').replace(/ \| /g, ' ').slice(0, 240));
+  var dg = window.__SCD_RN_DIAG || {};
+  check('سياق RTL داخل React (جذر AppRegistry أو SafeAreaProvider أو الافتراضي)', (dg.rendered > 0) || (dg.rtlRoot > 0) || window.__SCD_RNW_LOCALE__ === 'rtl-default',
+    'rendered=' + dg.rendered + ' | rtlRoot=' + dg.rtlRoot + ' | nested=' + dg.rtlRootNested + ' | domRoot=' + dg.domRoot + ' | locale=' + window.__SCD_RNW_LOCALE__ + ' | الاتجاه مضمون على DOM فقط؛ قلب يسار/يمين يتحقق منه القسم 4', true);
   check('crypto.subtle وrandomUUID متاحان (سياق آمن)', !!(window.crypto && crypto.subtle && typeof crypto.randomUUID === 'function' && crypto.randomUUID().length === 36), 'السياق غير آمن');
 
   var fontsLoaded = [];

@@ -73,6 +73,18 @@ module.exports = __out;
 `;
 }
 
+// الطبقة B: السياق الافتراضي في react-native-web هو ltr؛ نجعله rtl فيقلب RNW يسار/يمين في كل الشجرة دون أي جذر React.
+// دالة نقية (نص ← نتيجة). تفشل بهدوء (status=missing) إن اختلفت الصيغة، ولا توقف البناء.
+export const LOCALE_MARK = '__SCD_RNW_LOCALE__';
+const LOCALE_LTR = /(\bdefaultLocale\s*=\s*\{[^}]*?\bdirection\s*:\s*)(['"])ltr\2/;
+export function patchLocaleDefault(src) {
+  if (src.includes(LOCALE_MARK)) return { src, status: 'already' };
+  if (!LOCALE_LTR.test(src)) return { src, status: 'missing' };
+  const out = src.replace(LOCALE_LTR, (_m, pre, q) => pre + q + 'rtl' + q);
+  const tail = ";(function () { try { globalThis." + LOCALE_MARK + " = 'rtl-default'; } catch (e) {} })(); /* " + LOCALE_MARK + " */\n";
+  return { src: out.replace(/\s*$/, '\n') + tail, status: 'patched' };
+}
+
 export function applyRnwPatch(stageDir, log = console.log) {
   const pkg = join(stageDir, 'node_modules', 'react-native-web');
   const extras = join(stageDir, 'scd-shims', 'rnw-extras');
@@ -96,5 +108,14 @@ export function applyRnwPatch(stageDir, log = console.log) {
     }
     log('✔ عُدّل dist/cjs/index.js (CJS)');
   }
-  return { version };
+  let localeOk = 0;
+  for (const lf of [join(pkg, 'dist', 'modules', 'useLocale', 'index.js'), join(pkg, 'dist', 'cjs', 'modules', 'useLocale', 'index.js')]) {
+    if (!existsSync(lf)) continue;
+    const r = patchLocaleDefault(readFileSync(lf, 'utf8'));
+    if (r.status === 'patched') writeFileSync(lf, r.src);
+    if (r.status === 'missing') log('⚠ useLocale: صيغة defaultLocale غير متوقعة، تخطّينا الطبقة B في ' + lf);
+    else localeOk++;
+  }
+  log(localeOk ? '✔ useLocale: الاتجاه الافتراضي rtl (' + localeOk + ' ملف)' : '⚠ لم تُطبَّق الطبقة B (useLocale غير موجود)؛ يبقى حارس DOM');
+  return { version, localeOk };
 }
