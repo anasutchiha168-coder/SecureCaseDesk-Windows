@@ -1,0 +1,29 @@
+{
+  "_comment": "تصنيف كل واجهة react-native تستوردها src عند التشغيل على react-native-web. native-web = موجودة وتعمل في react-native-web. shim = نستبدلها في shims/react-native.tsx. noop-web = موجودة لكن بلا أثر على سطح المكتب (موثّق، لا حذف وظيفة). أي اسم غير مصنّف يُفشل scripts/check-rnweb-compat.mjs.",
+  "names": {
+    "View": { "status": "native-web" },
+    "Text": { "status": "native-web" },
+    "StyleSheet": { "status": "native-web" },
+    "ActivityIndicator": { "status": "native-web" },
+    "Pressable": { "status": "native-web" },
+    "ScrollView": { "status": "native-web" },
+    "FlatList": { "status": "native-web" },
+    "TextInput": { "status": "native-web" },
+    "TouchableOpacity": { "status": "native-web" },
+    "Switch": { "status": "native-web" },
+    "Image": { "status": "native-web" },
+    "Modal": { "status": "native-web" },
+    "Animated": { "status": "native-web", "note": "useNativeDriver غير مدعوم على الويب؛ يعود تلقائياً إلى JS مع تحذير" },
+    "Easing": { "status": "native-web" },
+    "Platform": { "status": "native-web", "note": "Platform.OS==='web'، وPlatform.Version غير معرّف (يظهر في شاشة فحص الأمان فقط)" },
+    "Linking": { "status": "native-web", "note": "openURL(mailto:) يمرّ بـ window.open؛ Electron يفتح https فقط خارجياً، وmailto: يُعالَج في القسم 5" },
+    "AppState": { "status": "native-web" },
+    "KeyboardAvoidingView": { "status": "native-web", "note": "بلا أثر على سطح المكتب (لا لوحة مفاتيح افتراضية)" },
+    "RefreshControl": { "status": "noop-web", "note": "react-native-web لا يرسم السحب للتحديث؛ التحديث اليدوي عبر أزرار الشاشات (القسم 4)" },
+    "Alert": { "status": "shim", "file": "web-alert.ts" },
+    "Share": { "status": "shim", "file": "web-share.ts" },
+    "I18nManager": { "status": "shim", "file": "web-i18n.ts" },
+    "DevSettings": { "status": "shim", "file": "web-i18n.ts" },
+    "StatusBar": { "status": "shim", "file": "web-i18n.ts" }
+  }
+}

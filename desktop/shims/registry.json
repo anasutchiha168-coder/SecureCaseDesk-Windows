@@ -55,9 +55,13 @@
       "section": 3
     },
     "react-native": {
-      "action": "native-web",
+      "action": "shim",
+      "file": "react-native.tsx",
       "section": 3,
-      "note": "react-native-web"
+      "aliases": [
+        "react-native-web"
+      ],
+      "note": "react-native-web + بدائل Alert/Share/I18nManager/DevSettings/StatusBar وضبط RTL. يُعترض 'react-native-web' أيضاً لأن Expo قد يحوّل react-native إليه قبل وصوله لمحلّلنا؛ ويُستثنى الـ shim نفسه."
     },
     "react-native-safe-area-context": {
       "action": "native-web",

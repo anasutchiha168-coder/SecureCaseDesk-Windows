@@ -11,9 +11,10 @@ node desktop/scripts/verify-backup.mjs
 | المسار | الدور | القسم |
 |---|---|---|
 | `backup/` | نسخة أصلية zip + مانيفست SHA-256 لكل ملف | 1 ✔ |
-| `shims/` | بدائل وحدات Expo الأصلية على Windows (تُستبدل عبر Metro فقط) | 1 هيكل، 2–7 تنفيذ |
+| `shims/` | بدائل وحدات Expo/RN الأصلية على Windows (تُستبدل عبر Metro فقط) | 1 هيكل، 3 `react-native`، 5–7 تنفيذ |
 | `electron/` | Main / Preload / IPC / بروتوكول app:// / فحص ذاتي | 2 ✔ |
 | `scripts/` | فحص النسخة الاحتياطية وتغطية الـ shims | 1 ✔ |
+| `scripts/build-web.mjs` | بناء الويب (Expo export) إلى `web-dist/` عبر مرحلة `.stage` | 3 ✔ |
 | `build/` | الأيقونات وموارد electron-builder | 9 |
 
 ## كيف تعمل طبقة Shims
@@ -25,10 +26,14 @@ node desktop/scripts/verify-backup.mjs
 ## الحالة
 - القسم 1 مكتمل.
 - القسم 2 مكتمل برمجياً: انظر `docs/section-2-report.md` (اختبارات المنطق 23/23؛ تشغيل Electron الفعلي يتحقق عبر `npm run smoke` في CI).
-- shims الأقسام 3–7 تُرمي `DesktopNotImplementedError` صريحاً بدل الفشل الصامت.
+- القسم 3 مكتمل برمجياً: انظر `docs/section-3-report.md` (اختبارات 35/35 + Chromium حقيقي؛ البناء الفعلي والفحص الدخاني يتحققان عبر `desktop-section3.yml`).
+- shims الأقسام 5–7 ترفض Promise بـ `DesktopNotImplementedError` صريحاً بدل الفشل الصامت (الدوال المتزامنة ترمي).
 
 ```
 cd desktop && npm install
 npm run verify:section2   # نسخة احتياطية + shims + اختبارات
 npm run smoke             # يشغّل Electron فعلياً (على Linux: xvfb-run)
+npm run verify:section3   # + توافق react-native-web واختبارات الويب
+npm run build:web         # يحتاج شبكة: ينتج desktop/web-dist
+npm run smoke:web         # يحمّل web-dist الحقيقي في Electron
 ```

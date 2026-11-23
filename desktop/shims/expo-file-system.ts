@@ -1,5 +1,5 @@
 // Shim لـ expo-file-system (واجهة File/Directory/Paths الجديدة المستخدمة في src). التنفيذ: القسم 5.
-import { notImplemented } from './errors';
+import { notImplemented, notImplementedAsync } from './errors';
 const M = 'expo-file-system';
 const S = 5;
 
@@ -16,7 +16,7 @@ export class File {
   get extension(): string { const n = this.name; const i = n.lastIndexOf('.'); return i >= 0 ? n.slice(i) : ''; }
   get exists(): boolean { return notImplemented(M, 'File.exists', S); }
   get size(): number { return notImplemented(M, 'File.size', S); }
-  bytes(): Promise<Uint8Array> { return notImplemented(M, 'File.bytes', S); }
+  bytes(): Promise<Uint8Array> { return notImplementedAsync(M, 'File.bytes', S); }
   create(_options?: Record<string, unknown>): void { return notImplemented(M, 'File.create', S); }
   write(_data: string | Uint8Array): void { return notImplemented(M, 'File.write', S); }
   open(_mode?: string): unknown { return notImplemented(M, 'File.open', S); }

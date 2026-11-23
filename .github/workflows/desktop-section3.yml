@@ -1,0 +1,36 @@
+name: Desktop section 3 (React Native Web)
+on:
+  workflow_dispatch:
+  push:
+    paths: ['desktop/**', '.github/workflows/desktop-section3.yml']
+jobs:
+  web:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - name: Keep LF line endings (SHA-256 backup check)
+        working-directory: .
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Verify (backup + shims + RN-web compat + unit tests)
+        run: npm run verify:section3
+      - name: Build web bundle (expo export, SCD_TARGET=windows)
+        id: build
+        run: npm run build:web
+      - name: Electron smoke on the real bundle
+        if: steps.build.outcome == 'success'
+        run: npm run smoke:web
+      - name: Upload web-dist
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: desktop/web-dist
+          if-no-files-found: warn

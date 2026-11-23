@@ -12,7 +12,13 @@
     "verify:backup": "node scripts/verify-backup.mjs",
     "verify:shims": "node scripts/check-shims.mjs",
     "verify:section1": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs",
-    "verify:section2": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs && node --test \"tests/electron/*.test.mjs\""
+    "verify:section2": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs && node --test \"tests/electron/*.test.mjs\"",
+    "test:web": "node --experimental-strip-types --test \"tests/web/*.test.mjs\"",
+    "verify:rnweb": "node scripts/check-rnweb-compat.mjs",
+    "build:web": "node scripts/build-web.mjs",
+    "stage:web": "node scripts/build-web.mjs --stage-only",
+    "smoke:web": "node scripts/smoke-web.mjs",
+    "verify:section3": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs && node scripts/check-rnweb-compat.mjs && node --test \"tests/electron/*.test.mjs\" && node --experimental-strip-types --test \"tests/web/*.test.mjs\""
   },
   "devDependencies": {
     "electron": "^37.0.0"

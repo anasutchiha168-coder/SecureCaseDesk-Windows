@@ -14,3 +14,8 @@ export class DesktopNotImplementedError extends Error {
 export function notImplemented(module: string, api: string, section: number): never {
   throw new DesktopNotImplementedError(module, api, section);
 }
+// للدوال التي تعيد Promise في الواجهة الأصلية: نرفض الوعد بدل الرمي المتزامن،
+// فيعمل `.catch()` وtry/await في src كما يعمل مع الوحدة الأصلية (مثل _layout.tsx مع SecureStore).
+export function notImplementedAsync<T = never>(module: string, api: string, section: number): Promise<T> {
+  return Promise.reject(new DesktopNotImplementedError(module, api, section));
+}
