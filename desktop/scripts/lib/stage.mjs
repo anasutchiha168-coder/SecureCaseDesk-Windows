@@ -75,6 +75,7 @@ export function verifyWebDist({ files, readText }) {
   const allJs = jsFiles.map((f) => readText(f));
   if (!allJs.some((t) => t.includes('__SCD_RN_WEB__'))) errors.push('shim react-native لم يُدمج في الحزمة (لا علامة __SCD_RN_WEB__)');
   if (!allJs.some((t) => t.includes('scd-alert-overlay'))) errors.push('بديل Alert غير موجود في الحزمة');
+  if (!allJs.some((t) => t.includes('__scdRtlRootCtx'))) errors.push('جذر RTL (shim react-native-safe-area-context) لم يُدمج في الحزمة (لا علامة __scdRtlRootCtx)');
   if (!allJs.some((t) => t.includes('DesktopNotImplementedError') || t.includes('scd:db:open'))) errors.push('shims الأقسام 5–7 لم تُدمج (expo-sqlite وغيره ما زال أصلياً؟)');
 
   const ttf = files.filter((f) => /\.ttf$/i.test(f));

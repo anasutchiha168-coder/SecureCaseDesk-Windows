@@ -56,4 +56,4 @@ if (registry && !registry[PATCHED]) {
 }
 
 // علامة يقرؤها فحص Electron الدخاني للتأكد أن الـ shim هو المُحمَّل فعلاً.
-(globalThis as any).__SCD_RN_WEB__ = Object.freeze({ shim: 1, rtl: true });
+(globalThis as any).__SCD_RN_WEB__ = Object.freeze({ shim: 1, rtl: true, diag: (globalThis as any).__SCD_RN_DIAG });

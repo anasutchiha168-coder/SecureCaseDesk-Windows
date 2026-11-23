@@ -13,10 +13,14 @@
   check('shim react-native هو المُحمَّل', window.__SCD_RN_WEB__ && window.__SCD_RN_WEB__.shim === 1 && window.__SCD_RN_WEB__.rtl === true, 'لا __SCD_RN_WEB__');
   check('اتجاه المستند RTL وlang=ar', document.documentElement.dir === 'rtl' && document.documentElement.lang === 'ar', document.documentElement.dir + '/' + document.documentElement.lang);
   check('الواجهة رُسمت داخل #root', !!(root && root.childNodes.length > 0), '#root فارغ');
+  // تشخيص RTL: سلسلة العقد من #root مع dir/lang، وعدّادات الجذرَين (AppRegistry وSafeAreaProvider). تُطبع كل قيمة في سطر مستقل.
   var chain = [];
-  for (var n = root, i = 0; n && n.firstElementChild && i < 5; i++) { n = n.firstElementChild; chain.push(n.tagName.toLowerCase() + '[dir=' + (n.getAttribute('dir') || '-') + ',lang=' + (n.getAttribute('lang') || '-') + ']'); }
-  var diagInfo = window.__SCD_RN_WEB__ && window.__SCD_RN_WEB__.diag ? JSON.stringify(window.__SCD_RN_WEB__.diag) : 'لا diag';
-  check('عقدة RN-web الجذرية dir=rtl', !!document.querySelector('#root [dir="rtl"]'), 'path=' + location.pathname + ' | diag=' + diagInfo + ' | chain=' + chain.join(' > '));
+  for (var n = root, i = 0; n && n.firstElementChild && i < 6; i++) { n = n.firstElementChild; chain.push(n.tagName.toLowerCase() + '[dir=' + (n.getAttribute('dir') || '-') + ']'); }
+  var diagInfo = window.__SCD_RN_DIAG ? JSON.stringify(window.__SCD_RN_DIAG) : (window.__SCD_RN_WEB__ && window.__SCD_RN_WEB__.diag ? JSON.stringify(window.__SCD_RN_WEB__.diag) : 'لا diag');
+  var rtlUntil = Date.now() + 5000; // مهلة قصيرة: قد يتأخر رسم الجذر لحظات بعد أول عقدة
+  while (!document.querySelector('#root [dir="rtl"]') && Date.now() < rtlUntil) await sleep(250);
+  var rtlNode = document.querySelector('#root [dir="rtl"]');
+  check('عقدة RN-web الجذرية dir=rtl', !!rtlNode, 'path=' + location.pathname + ' | diag=' + diagInfo + ' | chain=' + chain.join(' > ') + ' | rootChildren=' + (root ? root.childNodes.length : 0));
   check('crypto.subtle وrandomUUID متاحان (سياق آمن)', !!(window.crypto && crypto.subtle && typeof crypto.randomUUID === 'function' && crypto.randomUUID().length === 36), 'السياق غير آمن');
 
   var fontsLoaded = [];

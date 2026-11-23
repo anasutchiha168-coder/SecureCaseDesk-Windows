@@ -64,8 +64,10 @@
       "note": "react-native-web + بدائل Alert/Share/I18nManager/DevSettings/StatusBar وضبط RTL. يُعترض 'react-native-web' أيضاً لأن Expo قد يحوّل react-native إليه قبل وصوله لمحلّلنا؛ ويُستثنى الـ shim نفسه."
     },
     "react-native-safe-area-context": {
-      "action": "native-web",
-      "section": 3
+      "action": "shim",
+      "file": "safe-area-context.tsx",
+      "section": 3,
+      "note": "يمرّ كل شيء كما هو، ويُلفّ SafeAreaProvider بجذر <View dir=\"rtl\"> (إصلاح 2: لفّ AppRegistry وحده لم يكفِ). يُستثنى الـ shim نفسه فيصل إلى الحزمة الحقيقية."
     },
     "react-native-svg": {
       "action": "native-web",

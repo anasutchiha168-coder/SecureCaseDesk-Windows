@@ -1,7 +1,7 @@
 // فحص دخاني حقيقي لحزمة الويب الفعلية داخل Electron (القسم 3). يتطلب: npm run build:web ثم Electron مثبّتاً.
 // يضع نسخة من web-dist في مجلد مؤقت ويحقن فيها سكربتي فحص (ملفان خارجيان: CSP لا تسمح بـ inline)،
 // ثم يشغّل Electron بوضع SCD_SMOKE=1 على هذا الجذر. لا يُعدَّل web-dist نفسه.
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -35,7 +35,15 @@ child.on('exit', (code) => {
   const line = out.split('\n').find((l) => l.startsWith('SCD_SMOKE_RESULT '));
   if (!line) { console.error('✘ لا نتيجة فحص من Electron\n' + out.slice(-2000)); process.exit(1); }
   const r = JSON.parse(line.slice('SCD_SMOKE_RESULT '.length));
-  for (const c of r.checks ?? []) console.log(`${c.pass ? '✔' : c.informational ? '·' : '✘'} ${c.name}${c.detail ? ' — ' + c.detail : ''}`);
+  // التفاصيل الطويلة تُقسَّم عند ' | ' إلى أسطر قصيرة (تُقرأ على شاشة الهاتف دون قصّ).
+  const fmt = (c) => `${c.pass ? '✔' : c.informational ? '·' : '✘'} ${c.name}${c.detail ? '\n' + String(c.detail).split(' | ').map((x) => '      ' + x).join('\n') : ''}`;
+  for (const c of r.checks ?? []) console.log(fmt(c));
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    try {
+      const md = ['### Electron smoke', '', '```', ...(r.checks ?? []).map(fmt), ...(r.errors?.length ? ['', 'errors:', ...r.errors.map((e) => '  ' + e)] : []), '```', ''].join('\n');
+      appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);
+    } catch { /* الملخص اختياري */ }
+  }
   if (r.errors?.length) console.log('\nأخطاء الواجهة المرصودة:\n' + r.errors.map((e) => '  ' + e).join('\n'));
   process.exit(r.ok && code === 0 ? 0 : 1);
 });
