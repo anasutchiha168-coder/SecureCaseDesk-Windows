@@ -17,6 +17,11 @@ export interface RnwCore {
 const PATCHED = '__scdRtlRootPatched';
 
 export function createScdExtras(core: RnwCore) {
+  // عدّادات تشخيصية يقرؤها فحص Electron الدخاني عند فشل فحص dir=rtl.
+  // كائن واحد مشترك على globalThis كي لا تضيع العدّادات لو استُدعيت الدالة أكثر من مرة.
+  const g = globalThis as any;
+  const diag = g.__SCD_RN_DIAG ?? (g.__SCD_RN_DIAG = { registered: 0, rendered: 0, patchedRegistry: false, hasRegistry: false });
+  diag.hasRegistry = diag.hasRegistry || !!core.AppRegistry;
   if (typeof document !== 'undefined') {
     document.documentElement.setAttribute('dir', 'rtl');
     document.documentElement.setAttribute('lang', 'ar');
@@ -26,21 +31,24 @@ export function createScdExtras(core: RnwCore) {
   if (registry && !registry[PATCHED]) {
     const original = registry.registerComponent;
     registry.registerComponent = function (appKey: string, provider: () => any, section?: boolean) {
+      diag.registered++;
       let wrapped: any = null;
       return original.call(registry, appKey, () => {
         if (wrapped) return wrapped;
         const Inner = provider();
         wrapped = function ScdRtlRoot(props: any) {
+          diag.rendered++;
           return core.createElement(core.View, { dir: 'rtl', lang: 'ar', style: { flex: 1 } }, core.createElement(Inner, props));
         };
         return wrapped;
       }, section);
     };
     registry[PATCHED] = true;
+    diag.patchedRegistry = true;
   }
 
   // علامة يقرؤها فحص البناء الثابت وفحص Electron الدخاني.
-  (globalThis as any).__SCD_RN_WEB__ = Object.freeze({ shim: 1, rtl: true });
+  (globalThis as any).__SCD_RN_WEB__ = Object.freeze({ shim: 1, rtl: true, diag });
 
   return {
     Alert: { alert: showAlert },

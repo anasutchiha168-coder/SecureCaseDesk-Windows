@@ -13,7 +13,10 @@
   check('shim react-native هو المُحمَّل', window.__SCD_RN_WEB__ && window.__SCD_RN_WEB__.shim === 1 && window.__SCD_RN_WEB__.rtl === true, 'لا __SCD_RN_WEB__');
   check('اتجاه المستند RTL وlang=ar', document.documentElement.dir === 'rtl' && document.documentElement.lang === 'ar', document.documentElement.dir + '/' + document.documentElement.lang);
   check('الواجهة رُسمت داخل #root', !!(root && root.childNodes.length > 0), '#root فارغ');
-  check('عقدة RN-web الجذرية dir=rtl', !!document.querySelector('#root [dir="rtl"]'), 'لا عنصر dir=rtl داخل الجذر | path=' + location.pathname + ' | root=' + ((root && root.innerHTML) || '').slice(0, 160));
+  var chain = [];
+  for (var n = root, i = 0; n && n.firstElementChild && i < 5; i++) { n = n.firstElementChild; chain.push(n.tagName.toLowerCase() + '[dir=' + (n.getAttribute('dir') || '-') + ',lang=' + (n.getAttribute('lang') || '-') + ']'); }
+  var diagInfo = window.__SCD_RN_WEB__ && window.__SCD_RN_WEB__.diag ? JSON.stringify(window.__SCD_RN_WEB__.diag) : 'لا diag';
+  check('عقدة RN-web الجذرية dir=rtl', !!document.querySelector('#root [dir="rtl"]'), 'path=' + location.pathname + ' | diag=' + diagInfo + ' | chain=' + chain.join(' > '));
   check('crypto.subtle وrandomUUID متاحان (سياق آمن)', !!(window.crypto && crypto.subtle && typeof crypto.randomUUID === 'function' && crypto.randomUUID().length === 36), 'السياق غير آمن');
 
   var fontsLoaded = [];
