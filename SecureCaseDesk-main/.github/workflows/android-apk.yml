@@ -1,0 +1,91 @@
+# SECURECASEDESK_PHASE12_S1
+# بناء APK للتشغيل المحلي (مرشّح إصدار محلي) عبر EAS ثم حفظه كـ Artifact في GitHub Actions.
+# هذا الـ APK يعمل محلياً بلا خادم. لا مزامنة فيه (المرحلة 13 لاحقاً).
+# الأسرار المطلوبة: EXPO_TOKEN فقط (Settings > Secrets and variables > Actions). لا مفاتيح قاعدة بيانات في CI:
+# مفتاح SQLCipher يُولَّد على الجهاز ويُخزَّن في SecureStore.
+# مهم: يجب أن يكون المستودع Private لأن الـ APK يُخزَّن كـ Artifact.
+name: Android APK (local release candidate)
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'ملف البناء في eas.json'
+        type: choice
+        options: [preview, production]
+        default: preview
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: فحص وتحقق قبل البناء
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: تثبيت الاعتماديات
+        run: npm ci
+      - name: فحص إعدادات البناء والأمان
+        run: node scripts/preflight-build.mjs
+      - name: فحص TypeScript
+        run: npx tsc --noEmit
+      - name: اختبارات الوحدات
+        run: npm run test:all
+
+  build:
+    name: بناء APK عبر EAS
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      PROFILE: ${{ inputs.profile || 'preview' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: تثبيت الاعتماديات
+        run: npm ci
+      - name: إعداد EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: بناء Android على خوادم EAS
+        run: |
+          set -euo pipefail
+          eas build --platform android --profile "$PROFILE" --non-interactive --wait --json > build.json
+          jq -e '.[0].status == "FINISHED"' build.json > /dev/null || { echo "فشل البناء:"; cat build.json; exit 1; }
+          echo "BUILD_URL=$(jq -r '.[0].artifacts.buildUrl' build.json)" >> "$GITHUB_ENV"
+          echo "EAS_BUILD_ID=$(jq -r '.[0].id' build.json)" >> "$GITHUB_ENV"
+      - name: تنزيل APK وحساب SHA-256
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          APK="artifacts/SecureCaseDesk-${PROFILE}-run${GITHUB_RUN_NUMBER}.apk"
+          curl -fsSL "$BUILD_URL" -o "$APK"
+          unzip -tq "$APK" > /dev/null   # التأكد أنه أرشيف APK سليم
+          sha256sum "$APK" | tee "$APK.sha256"
+          echo "eas_build_id=$EAS_BUILD_ID" > artifacts/build-info.txt
+          echo "commit=$GITHUB_SHA" >> artifacts/build-info.txt
+          echo "profile=$PROFILE" >> artifacts/build-info.txt
+      - name: رفع APK كـ Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SecureCaseDesk-apk-${{ env.PROFILE }}-run${{ github.run_number }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 30

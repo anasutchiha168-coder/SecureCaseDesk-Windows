@@ -1,0 +1,101 @@
+# يضيف بيانات المطوّر والحقوق إلى شاشة الإعدادات تلقائياً ثم يحفظ التعديل في main
+# التشغيل: Actions ← "Apply developer credits" ← Run workflow
+name: Apply developer credits
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_apk:
+        description: 'ابنِ APK بعد التعديل'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: تعديل شاشة الإعدادات
+        run: |
+          python3 - << 'PY'
+          import re, sys
+          p = 'src/app/(tabs)/settings.tsx'
+          s = open(p, encoding='utf8').read()
+
+          if 'SECURECASEDESK_DEV_CREDITS' in s:
+              print('التعديل مطبّق مسبقاً، لا شيء للتغيير')
+              sys.exit(0)
+
+          def need(cond, msg):
+              if not cond:
+                  print('فشل: ' + msg); sys.exit(1)
+
+          # 1) استيراد Linking
+          m = re.search(r"import \{([^}]*)\} from 'react-native';", s)
+          need(m, 'لم أجد استيراد react-native')
+          if 'Linking' not in m.group(1):
+              s = s.replace(m.group(0), "import {" + m.group(1).rstrip() + ", Linking } from 'react-native';", 1)
+
+          # 2) أيقونات Mail و Copyright
+          need("} from 'lucide-react-native'" in s, 'لم أجد استيراد lucide-react-native')
+          s = s.replace("} from 'lucide-react-native'", "  Mail, Copyright,\n} from 'lucide-react-native'", 1)
+
+          # 3) ثوابت بيانات المطوّر
+          need('const TAB_NAMES' in s, 'لم أجد TAB_NAMES')
+          dev = """// بيانات المطوّر والحقوق (SECURECASEDESK_DEV_CREDITS)
+          const DEV = {
+            version: 'v2.2',
+            developer: 'Anas obali',
+            email: 'obalians83@gmail.com',
+            rights: 'جميع الحقوق محفوظة © 2026 Anas obali',
+          } as const;
+
+          """
+          dev = '\n'.join(l[10:] if l.startswith(' ' * 10) else l for l in dev.split('\n'))
+          s = s.replace('const TAB_NAMES', dev + 'const TAB_NAMES', 1)
+
+          # 4) استبدال قسم "حول التطبيق"
+          a = s.find('{/* حول التطبيق */}')
+          b = s.find('<FadeIn delay={270}>')
+          need(a != -1 and b != -1 and a < b, 'لم أجد قسم حول التطبيق')
+          block = """{/* حول التطبيق */}
+                  <Group title="حول التطبيق" delay={240}>
+                    <SettingRow icon={Info} title="الإصدار" subtitle={DEV.version} color={Pal.blue} />
+                    <SettingRow icon={UserRound} title="المطوّر" subtitle={DEV.developer} color={Pal.cyan} />
+                    <SettingRow icon={Copyright} title="الحقوق" subtitle={DEV.rights} color={Pal.gold} />
+                    <SettingRow icon={Mail} title="البريد الإلكتروني" subtitle={DEV.email} color={Pal.green}
+                      onPress={() => { Linking.openURL('mailto:' + DEV.email).catch(() => Alert.alert('تعذر فتح البريد', DEV.email)); }} last />
+                  </Group>
+
+                  """
+          block = '\n'.join(l[10:] if l.startswith(' ' * 10) else l for l in block.split('\n'))
+          s = s[:a] + block + s[b:]
+
+          # 5) إزالة متغير version القديم إن لم يعد مستخدماً
+          s = s.replace("  const version = Constants.expoConfig?.version ?? '2.2.0';\n", '')
+          if 'Constants.' not in s:
+              s = s.replace("import Constants from 'expo-constants';\n", '')
+
+          open(p, 'w', encoding='utf8').write(s)
+          print('تم تعديل الشاشة')
+          PY
+
+      - name: حفظ التعديل في main
+        run: |
+          if git diff --quiet; then echo "لا تغييرات"; exit 0; fi
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Add developer credits to settings"
+          git push
+
+      - name: بناء APK
+        if: ${{ inputs.build_apk }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run android-apk.yml -f profile=preview

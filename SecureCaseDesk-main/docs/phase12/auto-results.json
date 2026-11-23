@@ -1,0 +1,20 @@
+{
+  "at": "2026-11-21T10:33:39Z",
+  "node": "v24.22.2",
+  "preflight_rc": 0,
+  "tsc_rc": 0,
+  "tsc_tail": "",
+  "tests_rc": 0,
+  "summary": {
+    "tests": 598,
+    "suites": 79,
+    "pass": 595,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 3
+  },
+  "summary_valid": true,
+  "failed": [],
+  "todo": []
+}

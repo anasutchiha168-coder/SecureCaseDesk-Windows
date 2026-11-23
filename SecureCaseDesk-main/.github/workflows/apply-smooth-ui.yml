@@ -1,0 +1,141 @@
+# يجعل الخط أخف والانتقال بين الشاشات والتبويبات أنعم وأكثر انسيابية، ثم يحفظ التعديل في main
+# التشغيل: Actions ← "Apply smooth UI" ← Run workflow
+name: Apply smooth UI
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_apk:
+        description: 'ابنِ APK بعد التعديل'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: تطبيق تحسينات الخط والحركة
+        run: |
+          python3 - << 'PY'
+          import re, sys
+
+          def load(p):
+              return open(p, encoding='utf8').read()
+
+          def save(p, s):
+              open(p, 'w', encoding='utf8').write(s)
+
+          def rep(s, old, new, what):
+              if old not in s:
+                  print('فشل: لم أجد ' + what); sys.exit(1)
+              return s.replace(old, new, 1)
+
+          MARK = 'SECURECASEDESK_SMOOTH_UI'
+
+          # ───── 1) الخطوط (theme.ts): أخف وأنعم ─────
+          p = 'src/constants/theme.ts'
+          s = load(p)
+          if MARK not in s:
+              s = rep(s, "regular: 'Cairo_400Regular',", "light: 'Cairo_300Light', regular: 'Cairo_400Regular',", 'Fonts.regular')
+              s = rep(s, "display: { fontFamily: Fonts.extraBold, fontSize: 30", "display: { fontFamily: Fonts.bold, fontSize: 30", 'Type.display')
+              s = rep(s, "h1: { fontFamily: Fonts.bold, fontSize: 22", "h1: { fontFamily: Fonts.semiBold, fontSize: 22", 'Type.h1')
+              s = rep(s, "h2: { fontFamily: Fonts.bold, fontSize: 18", "h2: { fontFamily: Fonts.semiBold, fontSize: 18", 'Type.h2')
+              s = rep(s, "h3: { fontFamily: Fonts.semiBold, fontSize: 15", "h3: { fontFamily: Fonts.medium, fontSize: 15", 'Type.h3')
+              s = rep(s, "stat: { fontFamily: Fonts.extraBold, fontSize: 34", "stat: { fontFamily: Fonts.light, fontSize: 34", 'Type.stat')
+              s += "\n// " + MARK + ": خطوط أخف (Cairo Light/Medium/SemiBold) لمظهر أنعم.\n"
+              save(p, s); print('theme.ts ✔')
+          else:
+              print('theme.ts مطبّق مسبقاً')
+
+          # ───── 2) _layout الجذر: تحميل Light + انتقالات ناعمة بين الشاشات ─────
+          p = 'src/app/_layout.tsx'
+          s = load(p)
+          if MARK not in s:
+              s = rep(s, "import { Cairo_400Regular,", "import { Cairo_300Light, Cairo_400Regular,", 'استيراد Cairo')
+              s = rep(s, "useFonts({\n    Cairo_400Regular", "useFonts({\n    Cairo_300Light, Cairo_400Regular", 'useFonts')
+              s = rep(s, "contentStyle: { backgroundColor: Colors.background }, animation: 'fade' }}>",
+                      "contentStyle: { backgroundColor: Colors.background }, animation: 'fade_from_bottom', animationDuration: 260, gestureEnabled: true }}>", 'خيارات Stack')
+              s = rep(s, '<Stack.Screen name="index" />', "<Stack.Screen name=\"index\" options={{ animation: 'fade', animationDuration: 320 }} />", 'شاشة index')
+              s = rep(s, '<Stack.Screen name="setup" />', "<Stack.Screen name=\"setup\" options={{ animation: 'fade', animationDuration: 320 }} />", 'شاشة setup')
+              s = rep(s, '<Stack.Screen name="(tabs)" />', "<Stack.Screen name=\"(tabs)\" options={{ animation: 'fade', animationDuration: 320 }} />", 'شاشة tabs')
+              s += "\n// " + MARK + "\n"
+              save(p, s); print('_layout.tsx ✔')
+          else:
+              print('_layout.tsx مطبّق مسبقاً')
+
+          # ───── 3) التبويبات: انتقال متلاشٍ + أيقونة متحركة ─────
+          p = 'src/app/(tabs)/_layout.tsx'
+          s = load(p)
+          if MARK not in s:
+              s = rep(s, "import React, { useEffect } from 'react';", "import React, { useEffect, useRef } from 'react';", 'استيراد React')
+              s = rep(s, "import { View } from 'react-native';", "import { View, Animated, Easing } from 'react-native';", 'استيراد View')
+              a = s.find('function TabIcon(')
+              b = s.find('export default function TabLayout')
+              if a == -1 or b == -1 or a > b:
+                  print('فشل: لم أجد TabIcon'); sys.exit(1)
+              new_icon = '''// ''' + MARK + ''': تبويب نشط بانتقال ناعم (تلاشٍ + تكبير خفيف) بدل التبديل الفوري.
+          const SMOOTH_TABS = { animation: 'fade', tabBarHideOnKeyboard: true };
+
+          function TabIcon({ focused, children }: { focused: boolean; children: React.ReactNode }) {
+            const v = useRef(new Animated.Value(focused ? 1 : 0)).current;
+            useEffect(() => {
+              const a = Animated.timing(v, { toValue: focused ? 1 : 0, duration: 260, easing: Easing.bezier(0.22, 1, 0.36, 1), useNativeDriver: true });
+              a.start();
+              return () => a.stop();
+            }, [focused, v]);
+            return (
+              <View style={{ width: 46, height: 28, alignItems: 'center', justifyContent: 'center' }}>
+                <Animated.View pointerEvents="none" style={{
+                  position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, borderRadius: 14,
+                  backgroundColor: tint(Palette.cyan, 0.14), borderWidth: 1, borderColor: tint(Palette.cyan, 0.4),
+                  shadowColor: Palette.cyan, shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 0 },
+                  opacity: v, transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) }],
+                }} />
+                <Animated.View style={{ transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) }] }}>{children}</Animated.View>
+              </View>
+            );
+          }
+
+          '''
+              s = s[:a] + new_icon + s[b:]
+              s = rep(s, "        headerShown: false,\n        tabBarActiveTintColor", "        headerShown: false,\n        ...(SMOOTH_TABS as object),\n        tabBarActiveTintColor", 'screenOptions')
+              s = rep(s, "fontFamily: 'Cairo_600SemiBold',", "fontFamily: 'Cairo_500Medium',", 'خط عنوان التبويب')
+              save(p, s); print('(tabs)/_layout.tsx ✔')
+          else:
+              print('(tabs)/_layout.tsx مطبّق مسبقاً')
+
+          # ───── 4) الحركات المشتركة: أنعم وأرقّ ─────
+          p = 'src/components/ui/Motion.tsx'
+          s = load(p)
+          if MARK not in s:
+              s = rep(s, "duration: 420, delay, easing: Easing.out(Easing.cubic)", "duration: 520, delay, easing: Easing.bezier(0.22, 1, 0.36, 1)", 'FadeIn')
+              s = rep(s, "outputRange: [14, 0]", "outputRange: [10, 0]", 'FadeIn translateY')
+              s = rep(s, "to(0.965)", "to(0.975)", 'PressableScale scale')
+              s = rep(s, "speed: 40, bounciness: 4", "speed: 28, bounciness: 0", 'PressableScale spring')
+              s += "\n// " + MARK + "\n"
+              save(p, s); print('Motion.tsx ✔')
+          else:
+              print('Motion.tsx مطبّق مسبقاً')
+
+          PY
+
+      - name: حفظ التعديل في main
+        run: |
+          if git diff --quiet; then echo "لا تغييرات"; exit 0; fi
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Smooth UI: lighter fonts and fluid transitions"
+          git push
+
+      - name: بناء APK
+        if: ${{ inputs.build_apk }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run android-apk.yml -f profile=preview
