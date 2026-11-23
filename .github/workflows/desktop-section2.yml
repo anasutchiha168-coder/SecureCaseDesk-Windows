@@ -10,6 +10,9 @@ jobs:
       run:
         working-directory: desktop
     steps:
+      - name: Keep LF line endings (SHA-256 backup check)
+        working-directory: .
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -18,4 +21,5 @@ jobs:
       - name: Verify (backup + shims + unit tests)
         run: npm run verify:section2
       - name: Electron smoke (real run)
+        if: ${{ !cancelled() }}
         run: npm run smoke
