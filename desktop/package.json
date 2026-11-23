@@ -5,8 +5,16 @@
   "description": "SecureCaseDesk لنظام Windows (Electron + Expo Web) — مشروع مستقل لا يعدّل src ولا Android",
   "main": "electron/main.cjs",
   "scripts": {
+    "start": "electron .",
+    "dev": "node scripts/dev-electron.mjs",
+    "smoke": "node scripts/smoke-electron.mjs",
+    "test:electron": "node --test \"tests/electron/*.test.mjs\"",
     "verify:backup": "node scripts/verify-backup.mjs",
     "verify:shims": "node scripts/check-shims.mjs",
-    "verify:section1": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs"
+    "verify:section1": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs",
+    "verify:section2": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs && node --test \"tests/electron/*.test.mjs\""
+  },
+  "devDependencies": {
+    "electron": "^37.0.0"
   }
 }
