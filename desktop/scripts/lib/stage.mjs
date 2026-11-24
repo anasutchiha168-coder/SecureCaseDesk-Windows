@@ -103,3 +103,11 @@ export function pointRouterImportToShim(source, fileRel) {
   const out = source.replace(/(\bfrom\s*)(['"])expo-router\2/g, (_m, pre, q) => { count++; return pre + q + spec + q; });
   return { source: out, count, spec };
 }
+
+// على Windows الاتجاه RTL ثابت (web-i18n.ts). _layout.tsx يعرض «يلزم إعادة تشغيل التطبيق» إن كان I18nManager.isRTL=false عند الإقلاع
+// ثم يفشل SecureStore (القسم 7 غير منفَّذ) فيبقى عالقاً على تلك الشاشة ولا يُرسم Stack ولا الغلاف. نعطّل هذا المسار في نسخة المرحلة فقط.
+export const RTL_PENDING_LINE = 'const RTL_PENDING_AT_START = !I18nManager.isRTL;';
+export function forceDesktopRtlStart(source) {
+  if (!source.includes(RTL_PENDING_LINE)) return { source, ok: false };
+  return { source: source.replace(RTL_PENDING_LINE, 'const RTL_PENDING_AT_START = false; // SCD_DESKTOP: RTL ثابت على Windows (المرحلة فقط)'), ok: true };
+}

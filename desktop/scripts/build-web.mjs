@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { applyRnwPatch } from './lib/patch-rnw.mjs';
-import { STAGE_COPY, WEB_DEPS, buildStagedAppJson, buildMetroConfig, patchIndexHtml, verifyWebDist, ROUTER_LAYOUT_FILES, pointRouterImportToShim } from './lib/stage.mjs';
+import { STAGE_COPY, WEB_DEPS, buildStagedAppJson, buildMetroConfig, patchIndexHtml, verifyWebDist, ROUTER_LAYOUT_FILES, pointRouterImportToShim, forceDesktopRtlStart } from './lib/stage.mjs';
 
 const desktop = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const root = resolve(desktop, '..');
@@ -51,6 +51,13 @@ for (const rel of ROUTER_LAYOUT_FILES) {
   if (r.count === 0) { console.error('✘ لا استيراد expo-router في ' + rel); process.exit(1); }
   writeFileSync(f, r.source);
   console.log('✔ (المرحلة فقط) ' + rel + ': expo-router ← ' + r.spec);
+}
+{
+  const f = join(stage, 'src', 'app', '_layout.tsx');
+  const r = forceDesktopRtlStart(readFileSync(f, 'utf8'));
+  if (!r.ok) { console.error('✘ سطر RTL_PENDING_AT_START غير موجود في _layout.tsx (تغيّر الملف؟)'); process.exit(1); }
+  writeFileSync(f, r.source);
+  console.log('✔ (المرحلة فقط) _layout.tsx: RTL_PENDING_AT_START=false');
 }
 writeFileSync(join(stage, 'app.json'), JSON.stringify(buildStagedAppJson(JSON.parse(readFileSync(join(root, 'app.json'), 'utf8'))), null, 2) + '\n');
 writeFileSync(join(stage, 'metro.config.js'), buildMetroConfig());
