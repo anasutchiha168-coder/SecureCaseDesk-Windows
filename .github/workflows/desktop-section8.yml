@@ -1,0 +1,45 @@
+name: Desktop section 8 (full test run, real results)
+on:
+  workflow_dispatch:
+  push:
+    paths: ['desktop/**', 'src/**', '.github/workflows/desktop-section8.yml']
+jobs:
+  windows:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    # windows-2022 مرجعي (فيه Visual Studio 2022 لـ node-gyp). windows-latest يُجرَّب أيضاً دون أن يُسقط التشغيل إن تعذّر بناء الوحدة الأصلية.
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-latest]
+    env:
+      npm_config_msvs_version: '2022'
+      GYP_MSVS_VERSION: '2022'
+      SCD_REQUIRE_SQLCIPHER: '1'
+    timeout-minutes: 90
+    steps:
+      - name: Keep LF line endings (SHA-256 backup check)
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install root dependencies (for src logic tests)
+        run: npm ci --no-audit --no-fund
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm install --no-audit --no-fund
+      - name: Run all section 8 stages and record real results
+        working-directory: desktop
+        run: node scripts/run-section8.mjs
+      - name: Upload results and logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: section8-results-${{ matrix.os }}
+          path: |
+            desktop/docs/section-8-results.json
+            desktop/docs/section-8-report.md
+            desktop/section8-logs/
+          if-no-files-found: warn
