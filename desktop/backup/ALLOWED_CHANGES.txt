@@ -1,1 +1,27 @@
 # مسارات من المانيفست يُسمح بتغييرها عمداً (سطر لكل مسار). فارغ في القسم 1.
+.github/workflows/apply-credits.yml
+.github/workflows/apply-keyboard-fix.yml
+.github/workflows/apply-smooth-ui.yml
+SecureCaseDesk-ui-v2.zip
+SecureCaseDesk-updated.zip
+apk-direct.yml
+apply-10.6.sh
+apply-phase3.sh
+fix_attachments_sdk58.py
+fix_closedb.py
+fix_l1_g1_g2.py
+phase10-5.sh
+phase10_s7.py
+phase10_s8.py
+phase11_s1_install.sh
+phase11_s2_install.sh
+phase11_s3_install.sh
+phase11_s4_install.sh
+phase11_s5_install.sh
+phase12_s1_install.sh
+phase12_s2_install.sh
+phase12_s3.py
+scripts/repo-hygiene.sh
+ui_v3_detainees.py
+ui_v3_memos.py
+ui_v3_reports_attachments.py
