@@ -10,6 +10,7 @@ function createLogger(dir, fsImpl = fs) {
     const line = `${new Date().toISOString()} [${level}] ${msg}\n`;
     try {
       fsImpl.mkdirSync(dir, { recursive: true });
+      try { fsImpl.statSync(file); } catch { fsImpl.appendFileSync(file, '\uFEFF', 'utf8'); }
       try { if (fsImpl.statSync(file).size > MAX) fsImpl.renameSync(file, file + '.1'); } catch { /* لا ملف بعد */ }
       fsImpl.appendFileSync(file, line, 'utf8');
     } catch { /* لا نُفشل التطبيق بسبب السجل */ }

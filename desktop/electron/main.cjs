@@ -124,6 +124,15 @@ function createWindow() {
     },
   });
   mainWindow = win;
+  if (process.env.SCD_DIAG === '1') {
+    win.webContents.on('console-message', (e, lvl, msg, line, src) => {
+      const d = (e && e.message !== undefined) ? e : { level: lvl, message: msg, lineNumber: line, sourceId: src };
+      const level = typeof d.level === 'string' ? d.level : ['verbose', 'info', 'warning', 'error'][d.level] || String(d.level);
+      if (level === 'warning' || level === 'error') logger.warn('UI[' + level + '] ' + String(d.message).slice(0, 400) + ' @' + String(d.sourceId).slice(-60) + ':' + d.lineNumber);
+    });
+    win.webContents.on('did-finish-load', () => logger.info('UI: load finished'));
+    win.on('unresponsive', () => logger.error('window unresponsive'));
+  }
   // القسم 6: لا اتصالات/معاملات يتيمة عند إعادة تحميل الواجهة أو انهيارها أو إغلاق النافذة.
   const dropDb = () => { if (dbService) dbService.closeAll(); };
   win.webContents.on('did-start-loading', dropDb);
@@ -191,6 +200,8 @@ if (!SMOKE && !app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     logger = createLogger(path.join(app.getPath('userData'), 'logs'));
+    process.on('uncaughtException', (e) => logger.error('uncaughtException: ' + (e && e.message)));
+    process.on('unhandledRejection', (e) => logger.error('unhandledRejection: ' + (e && e.message ? e.message : String(e))));
     logger.info(`بدء SecureCaseDesk ${app.getVersion()} (Electron ${process.versions.electron})${SMOKE ? ' [smoke]' : ''}`);
     // القسم 5: documents (دائم) وcache (يُفرَّغ عند الإقلاع والإغلاق لأنه قد يحوي مرفقات مفكوكة).
     const files = createFsService({

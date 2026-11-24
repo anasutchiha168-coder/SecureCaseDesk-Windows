@@ -6,6 +6,7 @@ const { isTrustedUrl } = require('../lib/security.cjs');
 // يسجّل كل قناة بغلاف موحّد { ok, data | error }. ثلاث بوابات قبل أي تنفيذ:
 // 1) القناة في القائمة البيضاء  2) المُرسل هو الإطار الرئيسي لنافذتنا وبمصدر موثوق  3) الحمولة صالحة.
 // قنوات SYNC (ملفات القسم 5) تُسجَّل أيضاً لـ ipcRenderer.sendSync، ومعالجاتها متزامنة حتماً.
+const DIAG = process.env.SCD_DIAG === '1';
 function registerIpc({ ipcMain, handlers, getWindow, devOrigin, logger }) {
   const trusted = (event) => {
     const w = getWindow();
@@ -29,11 +30,14 @@ function registerIpc({ ipcMain, handlers, getWindow, devOrigin, logger }) {
     const entry = handlers.get(channel);
     if (!entry) throw new Error(`لا معالج للقناة ${channel}`);
     ipcMain.handle(channel, async (event, payload) => {
+      const t0 = Date.now();
+      if (DIAG) logger.info('IPC start ' + channel);
       try {
         guard(channel, event);
         const data = await entry.run(entry.validate(payload), event);
+        if (DIAG) logger.info('IPC done ' + channel + ' ok ' + (Date.now() - t0) + 'ms');
         return { ok: true, data: data === undefined ? null : data };
-      } catch (e) { return fail(channel, e); }
+      } catch (e) { if (DIAG) logger.info('IPC done ' + channel + ' ERR ' + (e && e.code ? e.code : '') + ' ' + (Date.now() - t0) + 'ms'); return fail(channel, e); }
     });
   }
 
