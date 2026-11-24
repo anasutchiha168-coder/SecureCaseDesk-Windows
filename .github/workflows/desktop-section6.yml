@@ -46,6 +46,6 @@ jobs:
         env:
           SCD_REQUIRE_SQLCIPHER: '1'
           SCD_FIXTURE_DIR: ${{ runner.temp }}/fx
-        run: node --test tests/electron/db-sqlcipher.test.mjs
+        run: node --test tests/electron/db-sqlcipher.test.mjs tests/electron/db-restore.test.mjs
       - name: Official SQLCipher reads our database
         run: bash scripts/verify-with-sqlcipher-cli.sh "$RUNNER_TEMP/fx"

@@ -10,6 +10,8 @@ const MAX_HANDLES = 16;
 const MAX_SQL = 2 * 1024 * 1024;
 const MAX_PARAMS = 5000;
 const STMT_CACHE = 100;
+// مطابقة أندرويد: src لا تضبط PRAGMA foreign_keys (الافتراضي في SQLite = OFF). better-sqlite3 يفعّلها افتراضياً فنعطّلها صراحة.
+const FK_ON = process.env.SCD_DB_FOREIGN_KEYS === '1';
 const NAME_RE = /^[^\\/:*?"<>|\x00-\x1f]{1,128}$/;
 const KEY_RE = /^\s*PRAGMA\s+key\s*=\s*'((?:[^']|'')*)'\s*;?\s*$/i;
 
@@ -119,7 +121,7 @@ function createDbService({ files, driver, logger, fsImpl = fs }) {
       }
       return wrap(() => {
         const raw = driver.open(file);
-        try { if (driver.cipher) for (const s of driver.cipher.init) raw.exec(s); } catch (e) { try { raw.close(); } catch { /* */ } throw e; }
+        try { if (driver.cipher) for (const s of driver.cipher.init) raw.exec(s); raw.exec('PRAGMA foreign_keys = ' + (FK_ON ? 'ON' : 'OFF') + ';'); } catch (e) { try { raw.close(); } catch { /* */ } throw e; }
         const id = nextId++;
         conns.set(id, { id, raw, file, memory, keyed: false, inTx: false, cache: new Map() });
         return { handle: id, path: memory ? ':memory:' : plain(file) };
