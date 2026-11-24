@@ -1,4 +1,4 @@
-// ملاحظة: القناة المفحوصة لـ NOT_IMPLEMENTED = scd:secure:get (القسم 7). عند تنفيذ القسم 7 يُحذف هذا الفحص أو تُبدَّل القناة.
+// القسم 7 نُفِّذ: scd:secure:get لم تعد NOT_IMPLEMENTED؛ يُفحص الآن أنها منفَّذة وتتحقق من حمولتها.
 // يعمل داخل الواجهة تحت نفس CSP الإنتاج (لا inline scripts). النتيجة في window.__smokeResult.
 (async () => {
   const checks = [];
@@ -19,7 +19,7 @@
   await check('scd:app:info', async () => { const i = await scd.invoke('scd:app:info'); return (i.name === 'SecureCaseDesk' && typeof i.version === 'string') || JSON.stringify(i); });
   await check('window:state', async () => { const s = await scd.invoke('scd:window:state'); return typeof s.maximized === 'boolean' || JSON.stringify(s); });
   await check('قناة خارج القائمة البيضاء تُرفض', () => rejects(scd.invoke('scd:evil'), '[CHANNEL_NOT_ALLOWED]'));
-  await check('قناة غير منفذة تُرجع NOT_IMPLEMENTED', () => rejects(scd.invoke('scd:secure:get', {}), '[NOT_IMPLEMENTED]'));
+  await check('قناة secure منفّذة: حمولة بلا اسم تُرفض INVALID_PAYLOAD', () => rejects(scd.invoke('scd:secure:get', {}), '[INVALID_PAYLOAD]'));
   await check('حمولة غير صالحة تُرفض', () => rejects(scd.invoke('scd:app:info', { x: 1 }), '[INVALID_PAYLOAD]'));
   await check('حدث غير مسموح يُرفض', () => { try { scd.on('evil', () => {}); return 'لم يُرفض'; } catch (e) { return e.message.startsWith('[EVENT_NOT_ALLOWED]') || e.message; } });
   await check('CSP تمنع eval', () => { try { new Function('return 1')(); return 'نُفّذ eval'; } catch { return true; } });

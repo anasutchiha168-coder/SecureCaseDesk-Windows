@@ -52,7 +52,9 @@
   if (lbl) check('تسمية عربية بـ textAlign:right تظهر يميناً فعلاً', getComputedStyle(lbl).textAlign === 'right', 'computed=' + getComputedStyle(lbl).textAlign + ' | flip=' + tf);
   else check('تسمية «اسم المستخدم» (فحص textAlign)', false, 'شاشة الدخول لم تُرسم (قاعدة البيانات غير منفّذة بعد؟)', true);
 
-  var expected = /DesktopNotImplementedError|غير منفَّذ بعد/;
+  // بعد القسم 7 تصل الواجهة إلى فتح القاعدة. هذا الفحص لا يثبّت محرك SQLCipher (يغطيه workflow القسم 6)،
+  // فغيابه فشل مغلق مقصود (DB_ENGINE_MISSING) ولا يُعدّ خطأ هنا. أي خطأ آخر يُفشل الفحص.
+  var expected = /DesktopNotImplementedError|غير منفَّذ بعد|DesktopDbError: محرك SQLCipher غير متوفر في هذا البناء/;
   var all = window.__scdErrors || [];
   var unexpected = all.filter(function (e) { return !expected.test(e); });
   check('لا أخطاء غير متوقعة في الواجهة', unexpected.length === 0, unexpected.slice(0, 3).join(' | '));
