@@ -27,6 +27,7 @@ node desktop/scripts/verify-backup.mjs
 - القسم 1 مكتمل.
 - القسم 2 مكتمل برمجياً: انظر `docs/section-2-report.md` (اختبارات المنطق 23/23؛ تشغيل Electron الفعلي يتحقق عبر `npm run smoke` في CI).
 - القسم 3 مكتمل برمجياً: انظر `docs/section-3-report.md` (اختبارات 35/35 + Chromium حقيقي؛ البناء الفعلي والفحص الدخاني يتحققان عبر `desktop-section3.yml`).
+- القسم 4 مكتمل برمجياً: انظر `docs/section-4-report.md` (78/78 + Chromium 27/27؛ المعيار الحقيقي `desktop-section4.yml`).
 - shims الأقسام 5–7 ترفض Promise بـ `DesktopNotImplementedError` صريحاً بدل الفشل الصامت (الدوال المتزامنة ترمي).
 
 ```
@@ -36,4 +37,5 @@ npm run smoke             # يشغّل Electron فعلياً (على Linux: xvfb
 npm run verify:section3   # + توافق react-native-web واختبارات الويب
 npm run build:web         # يحتاج شبكة: ينتج desktop/web-dist
 npm run smoke:web         # يحمّل web-dist الحقيقي في Electron
+npm run verify:section4   # كما section3 + اختبارات التخطيط
 ```

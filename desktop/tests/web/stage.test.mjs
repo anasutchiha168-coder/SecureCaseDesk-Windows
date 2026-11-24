@@ -87,7 +87,7 @@ test('patchIndexHtml: lang/dir/title/خلفية، بلا سكربت inline، و�
 function fixture(over = {}) {
   const files = {
     'index.html': patchIndexHtml('<html><head></head><body><div id="root"></div><script src="/_expo/static/js/web/entry.js" defer></script></body></html>'),
-    '_expo/static/js/web/entry.js': 'globalThis.__SCD_RN_WEB__=1;"__scdRtlRootCtx";"scd-alert-overlay";"DesktopNotImplementedError"',
+    '_expo/static/js/web/entry.js': 'globalThis.__SCD_RN_WEB__=1;"__scdRtlRootCtx";"scd-alert-overlay";"DesktopNotImplementedError";"__SCD_DESKTOP__";"scd-desktop-css";"__SCD_TEXTALIGN_FLIP__"',
     'assets/x.png': 'png',
     ...Object.fromEntries(CAIRO_WEIGHTS.map((w) => [`assets/node_modules/@expo-google-fonts/cairo/${w}.abc.ttf`, 'f'])),
     ...over,
@@ -105,6 +105,7 @@ test('verifyWebDist: يلتقط الأعطال المهمة', () => {
   assert.ok(has(fixture({ 'index.html': null }), /index\.html/));
   assert.ok(has(fixture({ '_expo/static/js/web/entry.js': 'nothing' }), /__SCD_RN_WEB__/));
   assert.ok(has(fixture({ '_expo/static/js/web/entry.js': 'globalThis.__SCD_RN_WEB__=1;"scd-alert-overlay";"DesktopNotImplementedError"' }), /__scdRtlRootCtx/), 'جذر RTL الجديد مطلوب في الحزمة');
+  assert.ok(has(fixture({ '_expo/static/js/web/entry.js': 'globalThis.__SCD_RN_WEB__=1;"__scdRtlRootCtx";"scd-alert-overlay";"DesktopNotImplementedError"' }), /__SCD_DESKTOP__/), 'غلاف القسم 4 مطلوب في الحزمة');
   assert.ok(has(fixture({ 'assets/node_modules/@expo-google-fonts/cairo/Cairo_700Bold.abc.ttf': null }), /Cairo_700Bold/));
   assert.ok(has(fixture({ 'index.html': '<html lang="ar" dir="rtl"><script>alert(1)</script><script src="/_expo/static/js/web/entry.js"></script>' }), /inline/));
   assert.ok(has(fixture({ 'index.html': '<html lang="ar" dir="rtl"><script src="https://evil.example/x.js"></script>' }), /خارجي/));

@@ -33,6 +33,25 @@
   var text = (root && root.innerText) || '';
   check('يوجد نص عربي مرسوم', /[؀-ۿ]/.test(text), 'النص: ' + text.slice(0, 80), true);
 
+
+  // ── القسم 4: غلاف سطح المكتب ──
+  var shellEl = null, shellUntil = Date.now() + 5000;
+  while (!(shellEl = document.querySelector('[data-scd-shell]')) && Date.now() < shellUntil) await sleep(250);
+  var dk = window.__SCD_DESKTOP__;
+  check('غلاف سطح المكتب رُسم (القسم 4)', !!shellEl && !!dk && dk.section === 4, 'shellEl=' + !!shellEl + ' | marker=' + JSON.stringify(dk && { shell: dk.shell, section: dk.section }) + ' | path=' + location.pathname);
+  if (shellEl) {
+    var mode = shellEl.getAttribute('data-scd-shell'), cw = Number(shellEl.getAttribute('data-scd-content-width'));
+    check('عمود المحتوى مُقيَّد وفق الوضع', mode === 'auth' ? (cw > 0 && cw <= 520) : (cw > 0 && cw <= 1280), 'mode=' + mode + ' | contentWidth=' + cw + ' | window=' + window.innerWidth);
+    var kids = shellEl.children;
+    check('أنماط سطح المكتب محقونة (CSP)', !!document.getElementById('scd-desktop-css'), 'لا عنصر style#scd-desktop-css');
+  }
+  // قلب textAlign: نقيس عنصراً كُتب له textAlign:'right' فعلياً (شاشة الدخول: تسمية «اسم المستخدم»). معلوماتي إن لم تظهر الشاشة.
+  var tf = window.__SCD_TEXTALIGN_FLIP__;
+  check('قياس textAlign عند الإقلاع نجح (null=تعذّر القياس)', tf === true || tf === false, 'flip=' + tf, true);
+  var lbl = Array.prototype.find.call(document.querySelectorAll('#root div[dir]'), function (n) { return n.textContent === 'اسم المستخدم'; });
+  if (lbl) check('تسمية عربية بـ textAlign:right تظهر يميناً فعلاً', getComputedStyle(lbl).textAlign === 'right', 'computed=' + getComputedStyle(lbl).textAlign + ' | flip=' + tf);
+  else check('تسمية «اسم المستخدم» (فحص textAlign)', false, 'شاشة الدخول لم تُرسم (قاعدة البيانات غير منفّذة بعد؟)', true);
+
   var expected = /DesktopNotImplementedError|غير منفَّذ بعد/;
   var all = window.__scdErrors || [];
   var unexpected = all.filter(function (e) { return !expected.test(e); });

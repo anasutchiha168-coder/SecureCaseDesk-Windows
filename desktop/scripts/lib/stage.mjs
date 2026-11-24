@@ -76,6 +76,9 @@ export function verifyWebDist({ files, readText }) {
   if (!allJs.some((t) => t.includes('__SCD_RN_WEB__'))) errors.push('shim react-native لم يُدمج في الحزمة (لا علامة __SCD_RN_WEB__)');
   if (!allJs.some((t) => t.includes('scd-alert-overlay'))) errors.push('بديل Alert غير موجود في الحزمة');
   if (!allJs.some((t) => t.includes('__scdRtlRootCtx'))) errors.push('جذر RTL (shim react-native-safe-area-context) لم يُدمج في الحزمة (لا علامة __scdRtlRootCtx)');
+  if (!allJs.some((t) => t.includes('__SCD_DESKTOP__'))) errors.push('غلاف سطح المكتب (shim expo-router، القسم 4) لم يُدمج في الحزمة (لا علامة __SCD_DESKTOP__)');
+  if (!allJs.some((t) => t.includes('scd-desktop-css'))) errors.push('أنماط سطح المكتب (القسم 4) غير موجودة في الحزمة');
+  if (!allJs.some((t) => t.includes('__SCD_TEXTALIGN_FLIP__'))) errors.push('قياس textAlign (القسم 4) غير موجود في الحزمة');
   if (!allJs.some((t) => t.includes('DesktopNotImplementedError') || t.includes('scd:db:open'))) errors.push('shims الأقسام 5–7 لم تُدمج (expo-sqlite وغيره ما زال أصلياً؟)');
 
   const ttf = files.filter((f) => /\.ttf$/i.test(f));

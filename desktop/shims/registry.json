@@ -47,8 +47,10 @@
       "note": "له تنفيذ ويب مدمج؛ يُتحقق منه في القسم 3 (randomUUID/getRandomBytes/digestStringAsync)"
     },
     "expo-router": {
-      "action": "native-web",
-      "section": 3
+      "action": "shim",
+      "file": "expo-router.tsx",
+      "section": 4,
+      "note": "يمرّ كل شيء كما هو من expo-router الحقيقي، ويُستبدل Stack بغلاف سطح المكتب (قائمة جانبية + عمود محتوى) وTabs بنسخة تخفي شريط التبويبات وتنشر عناصرها للقائمة. يُستثنى الـ shim نفسه فيصل إلى الحزمة الحقيقية."
     },
     "expo-font": {
       "action": "native-web",
