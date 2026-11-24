@@ -131,13 +131,25 @@ function createWindow() {
       if (level === 'warning' || level === 'error') logger.warn('UI[' + level + '] ' + String(d.message).slice(0, 400) + ' @' + String(d.sourceId).slice(-60) + ':' + d.lineNumber);
     });
     win.webContents.on('did-finish-load', () => logger.info('UI: load finished'));
+    win.webContents.on('did-start-loading', () => logger.info('UI: start loading'));
+    win.webContents.on('did-start-navigation', (e, url, inPlace, isMain) => {
+      const d = (e && e.isMainFrame !== undefined) ? e : { url, isSameDocument: inPlace, isMainFrame: isMain };
+      logger.info('UI: navigation main=' + d.isMainFrame + ' sameDoc=' + d.isSameDocument + ' ' + String(d.url).slice(0, 80));
+    });
     win.on('unresponsive', () => logger.error('window unresponsive'));
   }
   // القسم 6: لا اتصالات/معاملات يتيمة عند إعادة تحميل الواجهة أو انهيارها أو إغلاق النافذة.
-  const dropDb = () => { if (dbService) dbService.closeAll(); };
-  win.webContents.on('did-start-loading', dropDb);
-  win.webContents.on('render-process-gone', dropDb);
-  win.on('closed', dropDb);
+  const dropDb = (why) => {
+    if (!dbService) return;
+    const n = dbService.closeAll();
+    if (n && logger) logger.info('db: closed ' + n + ' connection(s): ' + why);
+  };
+  win.webContents.on('did-start-navigation', (e, url, inPlace, isMain) => {
+    const d = (e && e.isMainFrame !== undefined) ? e : { isSameDocument: inPlace, isMainFrame: isMain };
+    if (d.isMainFrame && !d.isSameDocument) dropDb('main-frame navigation');
+  });
+  win.webContents.on('render-process-gone', () => dropDb('renderer gone'));
+  win.on('closed', () => dropDb('window closed'));
 
   win.once('ready-to-show', () => { if (st.maximized) win.maximize(); win.show(); });
 
