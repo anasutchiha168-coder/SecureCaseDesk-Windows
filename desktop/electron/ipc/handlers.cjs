@@ -45,6 +45,9 @@ function buildHandlers(ctx) {
   // القسم 6: قاعدة البيانات المشفّرة (تُحقن من main.cjs).
   if (ctx.db) require('./db-handlers.cjs').registerDb(add, ctx);
 
+  // القسم 7: الأسرار (safeStorage/DPAPI) والتحقق المحلي (تُحقن من main.cjs).
+  if (ctx.secure || ctx.auth) require('./secure-handlers.cjs').registerSecure(add, ctx);
+
   // القنوات غير المنفّذة بعد: فشل صريح بدل الصمت (تُستبدل في الأقسام 5–7).
   for (const [channel, section] of Object.entries(CHANNELS)) {
     if (h.has(channel)) continue;

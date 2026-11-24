@@ -1,0 +1,30 @@
+name: Desktop section 7 (secure storage / DPAPI)
+on:
+  workflow_dispatch:
+  push:
+    paths: ['desktop/**', '.github/workflows/desktop-section7.yml']
+jobs:
+  windows:
+    runs-on: windows-2022
+    env:
+      npm_config_msvs_version: '2022'
+      GYP_MSVS_VERSION: '2022'
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - name: Keep LF line endings (SHA-256 backup check)
+        working-directory: .
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Verify sections 1-7 (real SQLCipher engine required)
+        env:
+          SCD_REQUIRE_SQLCIPHER: '1'
+        run: npm run verify:section7
+      - name: Real Electron smoke (safeStorage / DPAPI on Windows)
+        run: npm run smoke:secure

@@ -25,6 +25,9 @@
     "verify:section5": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs && node scripts/check-rnweb-compat.mjs && node --test \"tests/electron/*.test.mjs\" && node --experimental-strip-types --test \"tests/web/*.test.mjs\"",
     "test:db": "node --test \"tests/electron/db*.test.mjs\"",
     "smoke:db": "electron scripts/smoke-db.cjs",
+    "test:secure": "node --test \"tests/electron/secure*.test.mjs\" && node --experimental-strip-types --test \"tests/web/secure-shim.test.mjs\"",
+    "smoke:secure": "electron scripts/smoke-secure.cjs",
+    "verify:section7": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs && node scripts/check-rnweb-compat.mjs && node --test \"tests/electron/*.test.mjs\" && node --experimental-strip-types --test \"tests/web/*.test.mjs\"",
     "verify:section6": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs && node scripts/check-rnweb-compat.mjs && node --test \"tests/electron/*.test.mjs\" && node --experimental-strip-types --test \"tests/web/*.test.mjs\""
   },
   "devDependencies": {

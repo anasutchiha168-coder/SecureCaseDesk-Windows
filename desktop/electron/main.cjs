@@ -3,7 +3,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
 const { pathToFileURL } = require('node:url');
-const { app, BrowserWindow, protocol, net, session, shell, dialog, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, protocol, net, session, shell, dialog, ipcMain, screen, safeStorage } = require('electron');
 
 const sec = require('./lib/security.cjs');
 const { loadState, saveState, sanitizeState, MIN } = require('./lib/window-state.cjs');
@@ -14,6 +14,7 @@ const { installMenu } = require('./menu.cjs');
 const { createFsService } = require('./lib/fs-service.cjs');
 const { createPrintService } = require('./lib/print-service.cjs');
 const { createDbService, loadSqlcipherDriver } = require('./lib/db-service.cjs');
+const { createSecureService, createAuthService, sessionTtlMs } = require('./lib/secure-service.cjs');
 
 const SMOKE = process.env.SCD_SMOKE === '1';
 const DEV_ORIGIN = sec.parseDevUrl(process.env.SCD_DEV_URL, app.isPackaged);
@@ -202,6 +203,16 @@ if (!SMOKE && !app.requestSingleInstanceLock()) {
     if (!driver.available) logger.error('محرك SQLCipher غير متوفر: ' + driver.reason);
     dbService = createDbService({ files, driver, logger });
     app.on('will-quit', () => { dbService.closeAll(); });
+    // القسم 7: safeStorage/DPAPI. SCD_WINLATOR=1 يفعّل خلفية اختبار برمجية فقط (انظر secure-service.cjs).
+    const secure = createSecureService({
+      safeStorage, logger,
+      dir: path.join(app.getPath('userData'), 'secure'),
+      softwareTest: process.env.SCD_WINLATOR === '1',
+      sessionTtl: sessionTtlMs(),
+    });
+    const secInfo = secure.info();
+    logger.info(`التخزين الآمن: ${secInfo.backend}${secInfo.available ? '' : ' (غير متاح — سيفشل مغلقاً)'}`);
+    const auth = createAuthService();
     const printer = createPrintService({ BrowserWindow, files, platform: process.platform });
     app.on('will-quit', () => { files.purgeCache(); });
     installProtocol();
@@ -214,7 +225,7 @@ if (!SMOKE && !app.requestSingleInstanceLock()) {
       getWindow: () => mainWindow,
       handlers: buildHandlers({
         app, getWindow: () => mainWindow, versions: process.versions, platform: process.platform, arch: process.arch,
-        files, printer, dialog, shell, db: dbService,
+        files, printer, dialog, shell, db: dbService, secure, auth,
       }),
     });
     const win = createWindow();
