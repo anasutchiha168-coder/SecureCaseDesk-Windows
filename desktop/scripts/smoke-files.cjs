@@ -11,6 +11,7 @@ const { createPrintService } = require('../electron/lib/print-service.cjs');
 app.disableHardwareAcceleration();
 app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'scd-smoke5-')));
 const checks = [];
+let timeout;
 const check = (name, ok, extra) => checks.push({ name, ok: !!ok, ...(extra ? { extra } : {}) });
 
 app.whenReady().then(async () => {
@@ -40,7 +41,15 @@ app.whenReady().then(async () => {
     check('purgeCache', files.purgeCache() >= 1 && fs.readdirSync(files.cacheRoot).length === 0);
   } catch (e) { check('استثناء غير متوقع', false, String(e && e.stack || e)); }
   const ok = checks.every((c) => c.ok);
-  process.stdout.write('SCD_FILES_SMOKE ' + JSON.stringify({ ok, platform: process.platform, electron: process.versions.electron, checks }) + '\n');
-  app.exit(ok ? 0 : 1);
+  clearTimeout(timeout);
+  const report = { ok, platform: process.platform, electron: process.versions.electron, checks };
+  process.stdout.write('SCD_FILES_SMOKE ' + JSON.stringify(report) + '\n', () => {
+    process.exit(ok ? 0 : 1);
+  });
 });
-setTimeout(() => { process.stdout.write('SCD_FILES_SMOKE ' + JSON.stringify({ ok: false, error: 'timeout', checks }) + '\n'); app.exit(1); }, 90000);
+timeout = setTimeout(() => {
+  const report = { ok: false, error: 'timeout', checks };
+  process.stdout.write('SCD_FILES_SMOKE ' + JSON.stringify(report) + '\n', () => {
+    process.exit(1);
+  });
+}, 90000);

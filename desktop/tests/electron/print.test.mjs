@@ -71,6 +71,7 @@ test('طلبات الشبكة محجوبة: يُسمح بملف المستند �
   const decide = (url) => { let r; orig.reqHandler({ url }, (x) => { r = x; }); return r.cancel; };
   assert.equal(decide('https://evil.example/x.png'), true);
   assert.equal(decide('file:///C:/Windows/win.ini'), true);
+  assert.equal(decide(orig.loaded.at(-1)), false, 'the exact temporary HTML document must be allowed');
   assert.equal(decide('data:image/png;base64,AAAA'), false);
   assert.ok(verdict === undefined);
 });
@@ -85,6 +86,8 @@ test('الطلبات تُنفَّذ بالتسلسل', async () => {
   const { svc, log } = mk();
   await Promise.all([svc.toPdf({ html: '<p>1</p>' }), svc.toPdf({ html: '<p>2</p>' }), svc.toPdf({ html: '<p>3</p>' })]);
   assert.equal(log.windows.length, 3); assert.equal(log.destroyed, 3);
+  const partitions = log.windows.map((w) => w.webPreferences.partition);
+  assert.equal(new Set(partitions).size, 3, 'each PDF must use a separate session');
 });
 
 test('countPages', () => { assert.equal(countPages(Buffer.from('/Type /Pages /Type /Page /Type/Page')), 2); });

@@ -25,14 +25,26 @@ function countPages(buf) {
 
 function createPrintService({ BrowserWindow, files, fsImpl = fs, loadTimeoutMs = 45000, platform = process.platform }) {
   let queue = Promise.resolve();
-  let allowedFile = null;
-  let sessionReady = false;
   const run = (fn) => { const p = queue.then(fn, fn); queue = p.catch(() => {}); return p; };
-  const norm = (p) => (platform === 'win32' ? p.toLowerCase() : p);
 
-  function isAllowed(url) {
+  // Canonical comparison, including Windows path separators and casing.
+  const norm = (p) => {
+    const value = platform === 'win32'
+      ? path.win32.normalize(p)
+      : path.resolve(p);
+    return platform === 'win32' ? value.toLowerCase() : value;
+  };
+
+  // A print window may load only its own HTML document and embedded data URLs.
+  function isAllowed(url, allowedFile) {
     if (/^data:/i.test(url)) return true;
-    try { return allowedFile && norm(fileURLToPath(url)) === norm(allowedFile); } catch { return false; }
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'file:') return false;
+      return norm(fileURLToPath(parsed)) === norm(allowedFile);
+    } catch {
+      return false;
+    }
   }
 
   async function withDocument(html, use) {
@@ -42,28 +54,32 @@ function createPrintService({ BrowserWindow, files, fsImpl = fs, loadTimeoutMs =
     fsImpl.mkdirSync(dir, { recursive: true });
     const tmp = path.join(dir, crypto.randomUUID() + '.html');
     fsImpl.writeFileSync(tmp, html, 'utf8');
-    allowedFile = tmp;
+    const allowedFile = path.resolve(tmp);
+    const partition = 'scd-print-' + crypto.randomUUID();
     const win = new BrowserWindow({
       show: false, width: 900, height: 1200,
       webPreferences: {
         sandbox: true, contextIsolation: true, nodeIntegration: false, javascript: false,
-        webSecurity: true, allowRunningInsecureContent: false, webviewTag: false, partition: PARTITION,
+        webSecurity: true, allowRunningInsecureContent: false, webviewTag: false, partition,
       },
     });
     const wc = win.webContents;
-    if (!sessionReady) {
-      const ses = wc.session;
-      ses.webRequest.onBeforeRequest((d, cb) => cb({ cancel: !isAllowed(d.url) }));
-      ses.setPermissionRequestHandler((_w, _p, cb) => cb(false));
-      sessionReady = true;
-    }
+    const ses = wc.session;
+
+    // Each print window owns its session and its exact allowed document.
+    ses.webRequest.onBeforeRequest((details, callback) => {
+      callback({ cancel: !isAllowed(details.url, allowedFile) });
+    });
+    ses.setPermissionRequestHandler((_w, _p, cb) => cb(false));
+
     wc.setWindowOpenHandler(() => ({ action: 'deny' }));
-    wc.on('will-navigate', (e) => e.preventDefault());
+    wc.on('will-navigate', (e, url) => {
+      if (!isAllowed(url, allowedFile)) e.preventDefault();
+    });
     try {
       await withTimeout(win.loadURL(pathToFileURL(tmp).href), loadTimeoutMs, 'انتهت مهلة تجهيز المستند للطباعة');
       return await use(wc);
     } finally {
-      allowedFile = null;
       try { win.destroy(); } catch { /* أُغلقت */ }
       try { fsImpl.unlinkSync(tmp); } catch { /* حُذف */ }
     }

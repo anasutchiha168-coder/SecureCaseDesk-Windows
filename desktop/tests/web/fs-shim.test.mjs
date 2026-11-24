@@ -64,6 +64,8 @@ test('Paths + Directory.create/exists + File.create/write/exists/size/bytes', as
   throwsCode(() => f.create(), 'ALREADY_EXISTS');
   f.create({ overwrite: true }); assert.equal(f.size, 0);
   f.write('نص عربي'); assert.equal(await f.text(), 'نص عربي'); assert.equal(f.textSync(), 'نص عربي');
+  f.writeSync('متوافق مع writeSync');
+  assert.equal(f.textSync(), 'متوافق مع writeSync');
 });
 
 test('handle: كتابة متسلسلة WriteOnly وقراءة متسلسلة ReadOnly (مقاطع)', () => {

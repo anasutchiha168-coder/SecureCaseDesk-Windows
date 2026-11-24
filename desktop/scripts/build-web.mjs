@@ -59,6 +59,32 @@ for (const rel of ROUTER_LAYOUT_FILES) {
   writeFileSync(f, r.source);
   console.log('✔ (المرحلة فقط) _layout.tsx: RTL_PENDING_AT_START=false');
 }
+
+// SCD_WINDOWS_SKIP_UNPORTED_STARTUP_RECOVERY
+// Windows staging only: do not execute the Android/future-phase
+// restore-recovery hook until its Windows implementation is available.
+{
+  const f = join(stage, 'src', 'app', '_layout.tsx');
+  const source = readFileSync(f, 'utf8');
+  const recoveryImport =
+    /^import ['"]@\/modules\/backup\/startup-recovery['"];[ \t]*\/\/ SECURECASEDESK_PHASE10_S8[ \t]*$/m;
+
+  if (recoveryImport.test(source)) {
+    writeFileSync(
+      f,
+      source.replace(
+        recoveryImport,
+        '// Windows: unported startup recovery intentionally disabled in staged build.'
+      )
+    );
+    console.log('✔ Windows: skipped unported startup recovery (staged copy only)');
+  } else if (source.includes('@/modules/backup/startup-recovery')) {
+    throw new Error('Unexpected startup-recovery import format; refusing unsafe patch');
+  } else {
+    console.log('✔ Windows: startup recovery already absent from staged layout');
+  }
+}
+
 writeFileSync(join(stage, 'app.json'), JSON.stringify(buildStagedAppJson(JSON.parse(readFileSync(join(root, 'app.json'), 'utf8'))), null, 2) + '\n');
 writeFileSync(join(stage, 'metro.config.js'), buildMetroConfig());
 console.log('✔ المرحلة جاهزة: ' + relative(root, stage));

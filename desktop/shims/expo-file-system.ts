@@ -101,6 +101,7 @@ export class File {
     callSync(CH.write, { uri: this.uri, data: new Uint8Array(0), mode: options?.overwrite ? 'create-overwrite' : 'create', intermediates: !!options?.intermediates });
   }
   write(data: string | Uint8Array): void { callSync(CH.write, { uri: this.uri, data, mode: 'overwrite' }); }
+  writeSync(data: string | Uint8Array): void { this.write(data); }
   open(mode: Mode = FileMode.ReadOnly): FileHandle {
     if (!this.exists) throw new DesktopFsError('NOT_FOUND', 'الملف غير موجود');
     return new FileHandle(this.uri, mode);
