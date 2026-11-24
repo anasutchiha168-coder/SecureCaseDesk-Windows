@@ -26,7 +26,8 @@ if (!existsSync(join(desktop, 'web-dist', 'index.html'))) fail('web-dist/index.h
 
 rmSync(release, { recursive: true, force: true });
 const cfg = ['--config', 'electron-builder.config.cjs', '--win', '--x64', '--publish', 'never'];
-run('npx', ['electron-builder', ...cfg, ...(dirOnly ? ['--dir'] : ['nsis', 'portable'])]);
+// الأهداف (nsis + portable) معرّفة في electron-builder.config.cjs؛ تمريرها كوسائط بعد --x64 يُرفض (Unknown arguments).
+run('npx', ['electron-builder', ...cfg, ...(dirOnly ? ['--dir'] : [])]);
 
 if (dirOnly) { console.log('✔ تم المجلد المفكوك: release/win-unpacked'); process.exit(0); }
 
