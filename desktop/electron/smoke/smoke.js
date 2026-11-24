@@ -13,12 +13,12 @@
   await check('المصدر app://bundle', () => location.origin === 'app://bundle' || location.origin);
   await check('window.scd يكشف الواجهة المتوقعة فقط', () => {
     const k = Object.keys(window.scd || {}).sort().join(',');
-    return k === 'invoke,isDesktop,on,platform' || k;
+    return k === 'invoke,invokeSync,isDesktop,on,platform' || k;
   });
   await check('scd:app:info', async () => { const i = await scd.invoke('scd:app:info'); return (i.name === 'SecureCaseDesk' && typeof i.version === 'string') || JSON.stringify(i); });
   await check('window:state', async () => { const s = await scd.invoke('scd:window:state'); return typeof s.maximized === 'boolean' || JSON.stringify(s); });
   await check('قناة خارج القائمة البيضاء تُرفض', () => rejects(scd.invoke('scd:evil'), '[CHANNEL_NOT_ALLOWED]'));
-  await check('قناة غير منفذة تُرجع NOT_IMPLEMENTED', () => rejects(scd.invoke('scd:fs:read', { path: 'x' }), '[NOT_IMPLEMENTED]'));
+  await check('قناة غير منفذة تُرجع NOT_IMPLEMENTED', () => rejects(scd.invoke('scd:db:open', {}), '[NOT_IMPLEMENTED]'));
   await check('حمولة غير صالحة تُرفض', () => rejects(scd.invoke('scd:app:info', { x: 1 }), '[INVALID_PAYLOAD]'));
   await check('حدث غير مسموح يُرفض', () => { try { scd.on('evil', () => {}); return 'لم يُرفض'; } catch (e) { return e.message.startsWith('[EVENT_NOT_ALLOWED]') || e.message; } });
   await check('CSP تمنع eval', () => { try { new Function('return 1')(); return 'نُفّذ eval'; } catch { return true; } });

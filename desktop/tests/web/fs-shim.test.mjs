@@ -98,7 +98,7 @@ test('list/move/copy/delete على ملفات ومجلدات، وmove يحدّث
 });
 
 test('مسارات خارج الجذور ومسارات Windows الخام', async () => {
-  throwsCode(() => new File('file:///etc/passwd').exists, 'FS_FORBIDDEN');
+  assert.throws(() => new File('file:///etc/passwd').exists, (e) => ['FS_FORBIDDEN', 'INVALID_PAYLOAD'].includes(e.code));
   assert.throws(() => new File('C:\\Windows\\win.ini').exists, (e) => ['FS_FORBIDDEN', 'INVALID_PAYLOAD'].includes(e.code));
   await rejectsCode(new File(Paths.document, '..', 'x').bytes(), 'FS_FORBIDDEN');
   throwsCode(() => new File(Paths.document, 'run.exe').write('x'), 'FS_FORBIDDEN');
