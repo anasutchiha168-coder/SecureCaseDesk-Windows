@@ -24,6 +24,8 @@ const DEV = !app.isPackaged;
 app.setName('SecureCaseDesk');
 app.setAppUserModelId('gov.moi.hajjah.securecasedesk');
 if (SMOKE) app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'scd-smoke-')));
+// القسم 9: مجلد بيانات مخصص اختيارياً (اختبار/Winlator). الافتراضي %APPDATA%\SecureCaseDesk (من productName).
+if (!SMOKE && process.env.SCD_DATA_DIR) app.setPath('userData', path.resolve(process.env.SCD_DATA_DIR));
 if (process.env.SCD_DISABLE_GPU === '1') app.disableHardwareAcceleration(); // مفيد على Winlator/Wine
 app.commandLine.appendSwitch('lang', 'ar');
 protocol.registerSchemesAsPrivileged([

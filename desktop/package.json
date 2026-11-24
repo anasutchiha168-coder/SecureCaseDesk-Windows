@@ -31,12 +31,21 @@
     "verify:section6": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs && node scripts/check-rnweb-compat.mjs && node --test \"tests/electron/*.test.mjs\" && node --experimental-strip-types --test \"tests/web/*.test.mjs\"",
     "test:section8": "node --test \"tests/section8/*.test.mjs\"",
     "run:section8": "node scripts/run-section8.mjs",
-    "verify:section8": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs && node scripts/check-rnweb-compat.mjs && node --test \"tests/electron/*.test.mjs\" && node --experimental-strip-types --test \"tests/web/*.test.mjs\" && node --test \"tests/section8/*.test.mjs\""
+    "verify:section8": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs && node scripts/check-rnweb-compat.mjs && node --test \"tests/electron/*.test.mjs\" && node --experimental-strip-types --test \"tests/web/*.test.mjs\" && node --test \"tests/section8/*.test.mjs\"",
+    "dist:win": "node scripts/dist-win.mjs",
+    "dist:dir": "node scripts/dist-win.mjs --dir",
+    "verify:package": "node scripts/verify-package.mjs",
+    "verify:installer": "node scripts/verify-installer.mjs",
+    "test:section9": "node --test \"tests/section9/*.test.mjs\"",
+    "verify:section9": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs && node scripts/check-rnweb-compat.mjs && node --test \"tests/electron/*.test.mjs\" && node --experimental-strip-types --test \"tests/web/*.test.mjs\" && node --test \"tests/section8/*.test.mjs\" \"tests/section9/*.test.mjs\""
   },
   "devDependencies": {
-    "electron": "^37.0.0"
+    "electron": "^37.0.0",
+    "electron-builder": "^26.18.0"
   },
   "optionalDependencies": {
     "better-sqlite3-multiple-ciphers": "^13.2.0"
-  }
+  },
+  "productName": "SecureCaseDesk",
+  "author": "SecureCaseDesk"
 }

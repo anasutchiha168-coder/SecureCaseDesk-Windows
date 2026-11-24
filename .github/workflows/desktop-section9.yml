@@ -1,0 +1,58 @@
+name: Desktop section 9 (electron-builder NSIS + Portable)
+on:
+  workflow_dispatch:
+  push:
+    paths: ['desktop/**', '.github/workflows/desktop-section9.yml']
+jobs:
+  build:
+    # windows-2022: فيها Visual Studio 2022 لإعادة بناء SQLCipher لإصدار Electron (كما في القسمين 6 و7).
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      npm_config_msvs_version: '2022'
+      GYP_MSVS_VERSION: '2022'
+      SCD_REQUIRE_SQLCIPHER: '1'
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - name: Keep LF line endings (SHA-256 backup check)
+        working-directory: .
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Verify sections 1-9 (config, tests, original files unchanged)
+        run: npm run verify:section9
+      - name: Build NSIS installer + Portable
+        run: npm run dist:win
+      - name: Inspect package and run the packaged exe (smoke)
+        run: npm run verify:package
+      - name: Silent install, run installed app, silent uninstall
+        run: npm run verify:installer
+      - name: Summary
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: |
+          if (Test-Path release/SHA256SUMS.txt) {
+            "### Section 9 artifacts" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+            '```' | Out-File -Append $env:GITHUB_STEP_SUMMARY
+            Get-Content release/SHA256SUMS.txt | Out-File -Append $env:GITHUB_STEP_SUMMARY
+            Get-ChildItem release/*.exe | ForEach-Object { "{0}  {1:N1} MB" -f $_.Name, ($_.Length/1MB) } | Out-File -Append $env:GITHUB_STEP_SUMMARY
+            '```' | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          }
+      - name: Upload installer, portable and reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: SecureCaseDesk-windows-x64-run${{ github.run_number }}
+          path: |
+            desktop/release/SecureCaseDesk-Setup.exe
+            desktop/release/SecureCaseDesk-Portable.exe
+            desktop/release/SHA256SUMS.txt
+            desktop/release/package-report.json
+            desktop/release/installer-report.json
+          if-no-files-found: warn
+          retention-days: 30
