@@ -30,7 +30,7 @@
   "devDependencies": {
     "electron": "^37.0.0"
   },
-  "dependencies": {
+  "optionalDependencies": {
     "better-sqlite3-multiple-ciphers": "^13.2.0"
   }
 }
