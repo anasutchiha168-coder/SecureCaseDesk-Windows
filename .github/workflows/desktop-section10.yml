@@ -1,0 +1,71 @@
+name: Desktop section 10 (final EXE release)
+on:
+  workflow_dispatch:
+jobs:
+  release:
+    runs-on: windows-2022
+    timeout-minutes: 120
+    permissions:
+      contents: write
+    env:
+      npm_config_msvs_version: '2022'
+      GYP_MSVS_VERSION: '2022'
+      SCD_REQUIRE_SQLCIPHER: '1'
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - name: Keep LF line endings (SHA-256 backup check)
+        working-directory: .
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Verify sections 1-9
+        run: npm run verify:section9
+      - name: Build NSIS installer + Portable
+        run: npm run dist:win
+      - name: Inspect package and run the packaged exe
+        run: npm run verify:package
+      - name: Silent install, run, uninstall
+        run: npm run verify:installer
+      - name: Final file checks
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($n in 'SecureCaseDesk-Setup.exe','SecureCaseDesk-Portable.exe','SHA256SUMS.txt') {
+            if (-not (Test-Path "release/$n")) { throw "Missing release/$n" }
+          }
+          Get-ChildItem release/*.exe | ForEach-Object {
+            $b = [IO.File]::ReadAllBytes($_.FullName)[0..1]
+            if ([Text.Encoding]::ASCII.GetString($b) -ne 'MZ') { throw "$($_.Name) is not a PE file" }
+            "{0}  {1:N1} MB  sha256={2}" -f $_.Name, ($_.Length/1MB), (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+          }
+      - name: Upload artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: SecureCaseDesk-final-run${{ github.run_number }}
+          path: |
+            desktop/release/SecureCaseDesk-Setup.exe
+            desktop/release/SecureCaseDesk-Portable.exe
+            desktop/release/SHA256SUMS.txt
+            desktop/release/package-report.json
+            desktop/release/installer-report.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Publish GitHub Release (download links)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ver = (Get-Content package.json | ConvertFrom-Json).version
+          $tag = "desktop-v$ver-run${{ github.run_number }}"
+          $sums = Get-Content release/SHA256SUMS.txt -Raw
+          $notes = "SecureCaseDesk $ver for Windows 10/11 x64`n`n(Not code-signed: SmartScreen may warn on first run.)`n`nSHA-256:`n$sums`nInstall guide: desktop/docs/section-10-install-ar.md"
+          gh release create $tag `
+            release/SecureCaseDesk-Setup.exe release/SecureCaseDesk-Portable.exe release/SHA256SUMS.txt `
+            --title "SecureCaseDesk $ver (run ${{ github.run_number }})" --notes "$notes" --repo ${{ github.repository }}
+          "### Release: https://github.com/${{ github.repository }}/releases/tag/$tag" | Out-File -Append $env:GITHUB_STEP_SUMMARY
