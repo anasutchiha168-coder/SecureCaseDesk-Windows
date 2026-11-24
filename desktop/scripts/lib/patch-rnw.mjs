@@ -6,6 +6,13 @@ import { dirname, join, relative, sep } from 'node:path';
 export const PATCH_MARK = '__SCD_RNW_PATCH__';
 export const OVERRIDES = ['Alert', 'Share', 'I18nManager', 'DevSettings'];
 
+// القسم 4 (تخطيط سطح المكتب): مكوّنات تُستبدل داخل react-native-web نفسها عبر shims/rnw-section4.ts.
+// (react-native.tsx لا يدخل الحزمة أبداً لأن Expo يحوّل react-native إلى react-native-web قبل محلّل Metro.)
+export const S4_MARK = '__SCD_RNW_S4__';
+export const S4_OVERRIDES = ['Text', 'TextInput', 'ScrollView', 'FlatList', 'Modal', 'RefreshControl'];
+// مكوّنات أصلية يحتاجها createSection4 كمعاملات (يجب أن نجد سطر تصديرها).
+export const S4_NEEDS = ['Text', 'TextInput', 'ScrollView', 'FlatList', 'Modal', 'Pressable', 'ActivityIndicator', 'StyleSheet', 'useWindowDimensions'];
+
 const exportLine = (name) =>
   new RegExp(String.raw`^[ \t]*export\s*\{\s*default\s+as\s+${name}\s*\}\s*from\s*(['"])([^'"\r\n]+)\1\s*;?[ \t]*\r?$`, 'm');
 
@@ -19,17 +26,31 @@ export function toSpecifier(fromFile, targetNoExt) {
 }
 
 // dist/index.js (ESM): نحذف تصدير Alert/I18nManager الأصليَّين ونضيف تصديرنا.
-export function patchRnwEsm(src, extrasSpec) {
-  if (src.includes(PATCH_MARK)) return src;
+export function patchRnwEsm(src, extrasSpec, section4Spec = null) {
+  if (src.includes(PATCH_MARK)) {
+    if (section4Spec && !src.includes(S4_MARK)) throw new Error('react-native-web معدَّلة بنسخة قديمة بلا القسم 4؛ أعد البناء من الصفر (بدون --skip-install)');
+    return src;
+  }
   const find = (n) => { const m = src.match(exportLine(n)); return m ? m[2] : null; };
   const viewPath = find('View');
   const regPath = find('AppRegistry');
   if (!viewPath || !regPath) throw new Error('dist/index.js في react-native-web لا يصدّر View/AppRegistry بالصيغة المتوقعة');
   const statusPath = find('StatusBar');
 
+  // القسم 4: نجمع مسارات المكوّنات الأصلية قبل حذف تصديراتها.
+  const s4Paths = {};
+  if (section4Spec) {
+    for (const n of S4_NEEDS) {
+      const pth = find(n);
+      if (!pth) throw new Error(`dist/index.js في react-native-web لا يصدّر ${n} بالصيغة المتوقعة (مطلوب للقسم 4)`);
+      s4Paths[n] = pth;
+    }
+  }
+
   let out = src;
-  for (const n of OVERRIDES) out = out.replace(exportLine(n), '');
-  for (const n of OVERRIDES) {
+  const removed = section4Spec ? [...OVERRIDES, ...S4_OVERRIDES] : OVERRIDES;
+  for (const n of removed) out = out.replace(exportLine(n), '');
+  for (const n of removed) {
     if (leftover(out, n)) throw new Error(`تعذّر إزالة تصدير ${n} الأصلي من react-native-web (صيغة غير متوقعة)`);
   }
 
@@ -47,20 +68,35 @@ export function patchRnwEsm(src, extrasSpec) {
     'export const I18nManager = __scdX.I18nManager;',
     'export const DevSettings = __scdX.DevSettings;',
     ...(statusPath ? [] : ['export const StatusBar = __scdX.StatusBar;']),
+    ...(section4Spec
+      ? [
+          `/* ${S4_MARK}: مكوّنات القسم 4 (textAlign/قوائم/نوافذ/تحديث) */`,
+          ...S4_NEEDS.map((n) => `import __scdR_${n} from '${s4Paths[n]}';`),
+          `import { createSection4 as __scdS4Create } from '${section4Spec}';`,
+          `const __scdS4 = __scdS4Create({ View: __scdView, ${S4_NEEDS.map((n) => `${n}: __scdR_${n}`).join(', ')} });`,
+          ...S4_OVERRIDES.map((n) => `export const ${n} = __scdS4.${n};`),
+        ]
+      : []),
     '',
   ];
   return out.replace(/\s*$/, '\n') + lines.join('\n');
 }
 
 // dist/cjs/index.js: يُنقل الأصلي إلى index.original.js ويُكتب غلاف يحافظ على الـ getters الأصلية.
-export function buildCjsWrapper(extrasSpec) {
+export function buildCjsWrapper(extrasSpec, section4Spec = null) {
+  const s4 = section4Spec
+    ? `/* ${S4_MARK} */
+var __s4 = require('${section4Spec}').createSection4({ View: __orig.View, ${S4_NEEDS.map((n) => `${n}: __orig.${n}`).join(', ')} });
+Object.keys(__s4).forEach(function (k) { __over[k] = __s4[k]; });
+`
+    : '';
   return `"use strict";
 /* ${PATCH_MARK} */
 var __orig = require('./index.original.js');
 var __x = require('${extrasSpec}').createScdExtras({ View: __orig.View, AppRegistry: __orig.AppRegistry, StatusBar: __orig.StatusBar, createElement: require('react').createElement });
 var __over = { Alert: __x.Alert, Share: __x.Share, I18nManager: __x.I18nManager, DevSettings: __x.DevSettings };
 if (!__orig.StatusBar) __over.StatusBar = __x.StatusBar;
-var __out = {};
+${s4}var __out = {};
 Object.keys(__orig).forEach(function (k) {
   if (k === '__esModule' || Object.prototype.hasOwnProperty.call(__over, k)) return;
   Object.defineProperty(__out, k, { enumerable: true, get: function () { return __orig[k]; } });
@@ -88,23 +124,27 @@ export function patchLocaleDefault(src) {
 export function applyRnwPatch(stageDir, log = console.log) {
   const pkg = join(stageDir, 'node_modules', 'react-native-web');
   const extras = join(stageDir, 'scd-shims', 'rnw-extras');
+  const s4File = join(stageDir, 'scd-shims', 'rnw-section4');
+  const hasS4 = existsSync(s4File + '.ts');
   if (!existsSync(join(pkg, 'package.json'))) throw new Error('react-native-web غير مثبّتة في المرحلة: ' + pkg);
   const version = JSON.parse(readFileSync(join(pkg, 'package.json'), 'utf8')).version;
 
   const esm = join(pkg, 'dist', 'index.js');
   if (!existsSync(esm)) throw new Error('لا يوجد dist/index.js في react-native-web ' + version);
   const before = readFileSync(esm, 'utf8');
-  const after = patchRnwEsm(before, toSpecifier(esm, extras));
+  const after = patchRnwEsm(before, toSpecifier(esm, extras), hasS4 ? toSpecifier(esm, s4File) : null);
   if (after !== before) writeFileSync(esm, after);
   if (!readFileSync(esm, 'utf8').includes(PATCH_MARK)) throw new Error('فشل التحقق بعد تعديل dist/index.js');
-  log(`✔ react-native-web@${version}: عُدّل dist/index.js (ESM)`);
+  if (hasS4 && !readFileSync(esm, 'utf8').includes(S4_MARK)) throw new Error('فشل التحقق: مكوّنات القسم 4 لم تُحقن في dist/index.js');
+  log(`✔ react-native-web@${version}: عُدّل dist/index.js (ESM)${hasS4 ? ' + مكوّنات القسم 4 (textAlign/FlatList/Modal/ScrollView/RefreshControl)' : ''}`);
+  if (!hasS4) log('⚠ scd-shims/rnw-section4.ts غير موجود: لن تُحقن مكوّنات القسم 4');
 
   const cjs = join(pkg, 'dist', 'cjs', 'index.js');
   const cjsOrig = join(pkg, 'dist', 'cjs', 'index.original.js');
   if (existsSync(cjs)) {
     if (!readFileSync(cjs, 'utf8').includes(PATCH_MARK)) {
       renameSync(cjs, cjsOrig);
-      writeFileSync(cjs, buildCjsWrapper(toSpecifier(cjs, extras)));
+      writeFileSync(cjs, buildCjsWrapper(toSpecifier(cjs, extras), hasS4 ? toSpecifier(cjs, s4File) : null));
     }
     log('✔ عُدّل dist/cjs/index.js (CJS)');
   }
