@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { applyRnwPatch } from './lib/patch-rnw.mjs';
-import { STAGE_COPY, WEB_DEPS, buildStagedAppJson, buildMetroConfig, patchIndexHtml, verifyWebDist } from './lib/stage.mjs';
+import { STAGE_COPY, WEB_DEPS, buildStagedAppJson, buildMetroConfig, patchIndexHtml, verifyWebDist, ROUTER_LAYOUT_FILES, pointRouterImportToShim } from './lib/stage.mjs';
 
 const desktop = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const root = resolve(desktop, '..');
@@ -44,6 +44,14 @@ for (const item of STAGE_COPY) {
 }
 rmSync(join(stage, 'scd-shims'), { recursive: true, force: true });
 cpSync(join(desktop, 'shims'), join(stage, 'scd-shims'), { recursive: true });
+for (const rel of ROUTER_LAYOUT_FILES) {
+  const f = join(stage, ...rel.split('/'));
+  if (!existsSync(f)) { console.error('✘ ملف التخطيط غير موجود في المرحلة: ' + rel); process.exit(1); }
+  const r = pointRouterImportToShim(readFileSync(f, 'utf8'), rel);
+  if (r.count === 0) { console.error('✘ لا استيراد expo-router في ' + rel); process.exit(1); }
+  writeFileSync(f, r.source);
+  console.log('✔ (المرحلة فقط) ' + rel + ': expo-router ← ' + r.spec);
+}
 writeFileSync(join(stage, 'app.json'), JSON.stringify(buildStagedAppJson(JSON.parse(readFileSync(join(root, 'app.json'), 'utf8'))), null, 2) + '\n');
 writeFileSync(join(stage, 'metro.config.js'), buildMetroConfig());
 console.log('✔ المرحلة جاهزة: ' + relative(root, stage));

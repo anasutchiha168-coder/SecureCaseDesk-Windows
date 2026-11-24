@@ -92,3 +92,14 @@ export function verifyWebDist({ files, readText }) {
   }
   return errors;
 }
+
+// يوجّه استيراد 'expo-router' في ملفّي التخطيط (Stack/Tabs) داخل المرحلة فقط إلى shim الغلاف بمسار نسبي،
+// فلا يعتمد الغلاف على اعتراض محلّل Metro (درس القسم 3: Expo يسبق محلّلنا). المسار الأصلي في src لا يُمسّ أبداً.
+export const ROUTER_LAYOUT_FILES = ['src/app/_layout.tsx', 'src/app/(tabs)/_layout.tsx'];
+export function pointRouterImportToShim(source, fileRel) {
+  const depth = fileRel.split('/').length - 1;
+  const spec = (depth > 0 ? '../'.repeat(depth) : './') + 'scd-shims/expo-router';
+  let count = 0;
+  const out = source.replace(/(\bfrom\s*)(['"])expo-router\2/g, (_m, pre, q) => { count++; return pre + q + spec + q; });
+  return { source: out, count, spec };
+}

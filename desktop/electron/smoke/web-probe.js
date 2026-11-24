@@ -38,7 +38,7 @@
   var shellEl = null, shellUntil = Date.now() + 5000;
   while (!(shellEl = document.querySelector('[data-scd-shell]')) && Date.now() < shellUntil) await sleep(250);
   var dk = window.__SCD_DESKTOP__;
-  check('غلاف سطح المكتب رُسم (القسم 4)', !!shellEl && !!dk && dk.section === 4, 'shellEl=' + !!shellEl + ' | marker=' + JSON.stringify(dk && { shell: dk.shell, section: dk.section }) + ' | path=' + location.pathname);
+  check('غلاف سطح المكتب رُسم (القسم 4)', !!shellEl && !!dk && dk.section === 4, 'shellEl=' + !!shellEl + ' | marker=' + JSON.stringify(dk && { shell: dk.shell, section: dk.section }) + ' | diag=' + JSON.stringify(dk && dk.diag) + ' | state=' + JSON.stringify(dk && dk.state) + ' | byId=' + !!document.getElementById('scd-shell-root') + ' | path=' + location.pathname + ' | screen=' + String((root && root.innerText) || '').replace(/\s+/g, ' ').replace(/ \| /g, ' ').slice(0, 90));
   if (shellEl) {
     var mode = shellEl.getAttribute('data-scd-shell'), cw = Number(shellEl.getAttribute('data-scd-content-width'));
     check('عمود المحتوى مُقيَّد وفق الوضع', mode === 'auth' ? (cw > 0 && cw <= 520) : (cw > 0 && cw <= 1280), 'mode=' + mode + ' | contentWidth=' + cw + ' | window=' + window.innerWidth);

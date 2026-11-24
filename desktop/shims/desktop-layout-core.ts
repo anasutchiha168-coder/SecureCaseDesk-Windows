@@ -153,3 +153,12 @@ export function installDesktopCss(doc: StyleDocLike | null | undefined): boolean
   doc.head.appendChild(el);
   return true;
 }
+
+// تشخيص غلاف سطح المكتب: عدّادات على globalThis.__SCD_DESKTOP__.diag يقرؤها الفحص الدخاني عند الفشل. لا تأثير على السلوك.
+export function scdDiag(key: string, value?: unknown, g: any = globalThis): void {
+  try {
+    const d = g.__SCD_DESKTOP__ ?? (g.__SCD_DESKTOP__ = { shell: 1, section: 4, state: null });
+    const diag = d.diag ?? (d.diag = {});
+    diag[key] = value === undefined ? (Number(diag[key]) || 0) + 1 : value;
+  } catch { /* تشخيص فقط */ }
+}

@@ -7,7 +7,7 @@
 import * as React from 'react';
 import * as Real from 'expo-router';
 import { DesktopShell } from './desktop-shell';
-import { deriveNavItems } from './desktop-layout-core';
+import { deriveNavItems, scdDiag } from './desktop-layout-core';
 import { getNavStore, type NavEntry } from './desktop-nav-store';
 
 export * from 'expo-router';
@@ -23,6 +23,7 @@ const RealTabs: any = R.Tabs;
 const ShellFlag = React.createContext(false);
 
 function ShellHost({ children }: { children?: React.ReactNode }) {
+  scdDiag('hostRender');
   const segments = R.useSegments() as string[];
   const router = R.useRouter();
   const go = React.useCallback((route: string) => {
@@ -32,6 +33,7 @@ function ShellHost({ children }: { children?: React.ReactNode }) {
 }
 
 function ScdStackImpl(props: any) {
+  scdDiag('stackRender');
   const inShell = React.useContext(ShellFlag);
   const el = <RealStack {...props} />;
   if (inShell) return el;

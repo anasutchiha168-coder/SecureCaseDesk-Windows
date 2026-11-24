@@ -7,13 +7,14 @@ import * as Lucide from 'lucide-react-native';
 import { ShieldCheck } from 'lucide-react-native';
 import {
   LAYOUT, activeTabFromSegments, contentWidthFor, installDesktopCss, listColumnsFor, parseSidebarPref,
-  shellModeForSegments, shortcutTarget, sidebarModeFor, sidebarWidth, type SidebarPref,
+  scdDiag, shellModeForSegments, shortcutTarget, sidebarModeFor, sidebarWidth, type SidebarPref,
 } from './desktop-layout-core';
 import { getNavStore, type NavEntry } from './desktop-nav-store';
 import { DesktopLayoutContext, type DesktopLayoutValue } from './desktop-layout-context';
 import { DT, DT_IDENTITY, tintColor } from './desktop-theme';
 
 const PREF_KEY = 'scd.sidebar';
+const SHELL_DOM_ID = 'scd-shell-root';
 const readPref = (): SidebarPref => {
   try { return parseSidebarPref(window.localStorage.getItem(PREF_KEY)); } catch { return 'auto'; }
 };
@@ -28,7 +29,7 @@ const pickIcon = (name: string): React.ComponentType<any> | null => ((Lucide as 
 class ShellBoundary extends React.Component<{ fallback: React.ReactNode; children: React.ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
-  componentDidCatch(e: unknown) { console.error('[desktop-shell] تعذّر رسم الغلاف، يُعرض المحتوى بلا قائمة جانبية:', e); }
+  componentDidCatch(e: unknown) { scdDiag('boundaryError', String((e as { message?: unknown } | null)?.message ?? e).slice(0, 160)); console.error('[desktop-shell] تعذّر رسم الغلاف، يُعرض المحتوى بلا قائمة جانبية:', e); }
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
@@ -104,6 +105,7 @@ function ShellInner({ segments, onNavigate, children }: DesktopShellProps) {
   const items = React.useSyncExternalStore(store.subscribe, store.get, store.get);
   const [pref, setPref] = React.useState<SidebarPref>(readPref);
   const rootRef = React.useRef<any>(null);
+  scdDiag('innerRender');
 
   const shell = shellModeForSegments(segments);
   const hasSidebar = shell === 'app' && items.length > 0;
@@ -128,8 +130,12 @@ function ShellInner({ segments, onNavigate, children }: DesktopShellProps) {
 
   // علامات DOM يقرؤها الفحص الدخاني في Electron (لا تأثير على التصميم).
   React.useEffect(() => {
-    const el = rootRef.current;
+    let el: any = rootRef.current;
+    scdDiag('refKind', el ? (typeof el.setAttribute === 'function' ? 'dom' : 'non-dom') : 'null');
+    if (!el || typeof el.setAttribute !== 'function') el = typeof document !== 'undefined' ? document.getElementById(SHELL_DOM_ID) : null;
+    if (!el || typeof el.setAttribute !== 'function') scdDiag('markMissed');
     if (el && typeof el.setAttribute === 'function') {
+      scdDiag('marked');
       el.setAttribute('data-scd-shell', shell);
       el.setAttribute('data-scd-sidebar', hasSidebar ? sidebarMode : 'none');
       el.setAttribute('data-scd-content-width', String(Math.round(contentWidth)));
@@ -150,7 +156,7 @@ function ShellInner({ segments, onNavigate, children }: DesktopShellProps) {
 
   return (
     <DesktopLayoutContext.Provider value={ctx}>
-      <View ref={rootRef} style={s.root}>
+      <View ref={rootRef} id={SHELL_DOM_ID} style={s.root}>
         {hasSidebar ? (
           <>
             <Sidebar items={items} activeTab={activeTab} compact={sidebarMode === 'compact'} onNavigate={onNavigate} onToggle={toggle} />
