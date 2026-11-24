@@ -13,6 +13,7 @@ const { registerIpc } = require('./ipc/register.cjs');
 const { installMenu } = require('./menu.cjs');
 const { createFsService } = require('./lib/fs-service.cjs');
 const { createPrintService } = require('./lib/print-service.cjs');
+const { createDbService, loadSqlcipherDriver } = require('./lib/db-service.cjs');
 
 const SMOKE = process.env.SCD_SMOKE === '1';
 const DEV_ORIGIN = sec.parseDevUrl(process.env.SCD_DEV_URL, app.isPackaged);
@@ -29,6 +30,7 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 let mainWindow = null;
+let dbService = null; // القسم 6
 let logger = null;
 let crashTimes = [];
 
@@ -119,6 +121,11 @@ function createWindow() {
     },
   });
   mainWindow = win;
+  // القسم 6: لا اتصالات/معاملات يتيمة عند إعادة تحميل الواجهة أو انهيارها أو إغلاق النافذة.
+  const dropDb = () => { if (dbService) dbService.closeAll(); };
+  win.webContents.on('did-start-loading', dropDb);
+  win.webContents.on('render-process-gone', dropDb);
+  win.on('closed', dropDb);
 
   win.once('ready-to-show', () => { if (st.maximized) win.maximize(); win.show(); });
 
@@ -190,6 +197,11 @@ if (!SMOKE && !app.requestSingleInstanceLock()) {
     });
     files.ensureRoots();
     files.purgeCache();
+    // القسم 6: SQLCipher داخل documents/SQLite. غياب المحرك = فشل مغلق عند الفتح وليس قاعدة غير مشفّرة.
+    const driver = loadSqlcipherDriver();
+    if (!driver.available) logger.error('محرك SQLCipher غير متوفر: ' + driver.reason);
+    dbService = createDbService({ files, driver, logger });
+    app.on('will-quit', () => { dbService.closeAll(); });
     const printer = createPrintService({ BrowserWindow, files, platform: process.platform });
     app.on('will-quit', () => { files.purgeCache(); });
     installProtocol();
@@ -202,7 +214,7 @@ if (!SMOKE && !app.requestSingleInstanceLock()) {
       getWindow: () => mainWindow,
       handlers: buildHandlers({
         app, getWindow: () => mainWindow, versions: process.versions, platform: process.platform, arch: process.arch,
-        files, printer, dialog, shell,
+        files, printer, dialog, shell, db: dbService,
       }),
     });
     const win = createWindow();

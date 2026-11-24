@@ -42,6 +42,8 @@ function buildHandlers(ctx) {
 
   // القسم 5: الملفات والطباعة والمشاركة (تُحقن الخدمات من main.cjs؛ دونها تبقى القنوات NOT_IMPLEMENTED).
   if (ctx.files) require('./fs-handlers.cjs').registerFiles(add, ctx);
+  // القسم 6: قاعدة البيانات المشفّرة (تُحقن من main.cjs).
+  if (ctx.db) require('./db-handlers.cjs').registerDb(add, ctx);
 
   // القنوات غير المنفّذة بعد: فشل صريح بدل الصمت (تُستبدل في الأقسام 5–7).
   for (const [channel, section] of Object.entries(CHANNELS)) {
