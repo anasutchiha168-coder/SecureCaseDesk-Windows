@@ -19,7 +19,10 @@
     "stage:web": "node scripts/build-web.mjs --stage-only",
     "smoke:web": "node scripts/smoke-web.mjs",
     "verify:section4": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs && node scripts/check-rnweb-compat.mjs && node --test \"tests/electron/*.test.mjs\" && node --experimental-strip-types --test \"tests/web/*.test.mjs\"",
-    "verify:section3": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs && node scripts/check-rnweb-compat.mjs && node --test \"tests/electron/*.test.mjs\" && node --experimental-strip-types --test \"tests/web/*.test.mjs\""
+    "verify:section3": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs && node scripts/check-rnweb-compat.mjs && node --test \"tests/electron/*.test.mjs\" && node --experimental-strip-types --test \"tests/web/*.test.mjs\"",
+    "test:files": "node --test \"tests/electron/fs*.test.mjs\" \"tests/electron/print.test.mjs\"",
+    "smoke:files": "electron scripts/smoke-files.cjs",
+    "verify:section5": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs && node scripts/check-rnweb-compat.mjs && node --test \"tests/electron/*.test.mjs\" && node --experimental-strip-types --test \"tests/web/*.test.mjs\""
   },
   "devDependencies": {
     "electron": "^37.0.0"

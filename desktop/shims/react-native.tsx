@@ -20,6 +20,7 @@ import { I18nManagerWeb, DevSettingsWeb, StatusBarWeb } from './web-i18n';
 import { LAYOUT, pickOverlayColor } from './desktop-layout-core';
 import { useDesktopLayout } from './desktop-layout-context';
 import { compensateStyle, interpretProbe, swapAlign } from './text-align-fix';
+import { createScdImage } from './file-image';
 
 export * from 'react-native-web';
 
@@ -66,6 +67,9 @@ if (registry && !registry[PATCHED]) {
 
 // ───────────────────────── القسم 4: تخطيط سطح المكتب ─────────────────────────
 const R = RNW as any;
+
+// ── Image: عناوين file:// (الصور المفكوكة في cache) تُعرض عبر blob: لأن Chromium يمنع file:// من app:// (القسم 5) ──
+export const Image = createScdImage(R);
 
 // ── تكافؤ textAlign ──
 // نقيس مرة واحدة عند الإقلاع: نرسم Text تجريبياً (textAlign:'right') داخل <View dir="rtl"> ونقرأ textAlign المحسوب.

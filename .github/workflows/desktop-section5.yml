@@ -1,0 +1,29 @@
+name: Desktop section 5 (files + print)
+on:
+  workflow_dispatch:
+  push:
+    paths: ['desktop/**', '.github/workflows/desktop-section5.yml']
+jobs:
+  files:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - name: Keep LF line endings (SHA-256 backup check)
+        working-directory: .
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Verify (backup + shims + RN-web + electron + web tests)
+        run: npm run verify:section5
+      - name: Real Electron smoke (files + printToPDF on Windows)
+        run: npm run smoke:files
+      - name: Build web bundle
+        run: npm run build:web
+      - name: Electron smoke on the real bundle
+        run: npm run smoke:web

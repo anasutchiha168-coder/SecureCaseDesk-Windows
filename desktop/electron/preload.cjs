@@ -9,6 +9,7 @@ const INVOKE = new Set([
   'scd:window:minimize', 'scd:window:toggle-maximize', 'scd:window:close', 'scd:window:state',
   'scd:fs:read', 'scd:fs:write', 'scd:fs:exists', 'scd:fs:remove', 'scd:fs:list',
   'scd:fs:stat', 'scd:fs:mkdir', 'scd:fs:open-dialog', 'scd:fs:save-dialog',
+  'scd:fs:roots', 'scd:fs:copy', 'scd:fs:move', 'scd:fs:read-range', 'scd:fs:write-at',
   'scd:db:open', 'scd:db:exec', 'scd:db:run', 'scd:db:all', 'scd:db:first', 'scd:db:tx', 'scd:db:close',
   'scd:secure:get', 'scd:secure:set', 'scd:secure:remove',
   'scd:auth:available', 'scd:auth:prompt',
@@ -17,6 +18,11 @@ const INVOKE = new Set([
   // </CHANNELS>
 ]);
 const EVENTS = new Set(['scd:event:window-state']);
+// القنوات المسموح استدعاؤها بشكل متزامن (ملفات القسم 5 فقط). main يتحقق من المُرسل والحمولة لكل منها.
+const SYNC = new Set([
+  'scd:fs:roots', 'scd:fs:stat', 'scd:fs:exists', 'scd:fs:read', 'scd:fs:read-range', 'scd:fs:write', 'scd:fs:write-at',
+  'scd:fs:mkdir', 'scd:fs:remove', 'scd:fs:list', 'scd:fs:move', 'scd:fs:copy',
+]);
 
 // عبر contextBridge تُنسخ الأخطاء برسالتها فقط، لذا الرمز يُدمج في الرسالة بالشكل: [CODE] message
 function fail(code, message) {
@@ -36,6 +42,14 @@ async function invoke(channel, payload) {
   throw fail(typeof err.code === 'string' ? err.code : 'INTERNAL', typeof err.message === 'string' ? err.message : 'فشل غير معروف');
 }
 
+function invokeSync(channel, payload) {
+  if (typeof channel !== 'string' || !SYNC.has(channel)) throw fail('CHANNEL_NOT_ALLOWED', 'قناة متزامنة غير مسموحة');
+  const res = ipcRenderer.sendSync(channel, payload);
+  if (res && res.ok === true) return res.data;
+  const err = res && res.error ? res.error : {};
+  throw fail(typeof err.code === 'string' ? err.code : 'INTERNAL', typeof err.message === 'string' ? err.message : 'فشل غير معروف');
+}
+
 function on(event, callback) {
   if (typeof event !== 'string' || !EVENTS.has(event)) throw fail('EVENT_NOT_ALLOWED', 'حدث غير مسموح');
   if (typeof callback !== 'function') throw fail('INVALID_PAYLOAD', 'callback مطلوب');
@@ -44,4 +58,4 @@ function on(event, callback) {
   return () => ipcRenderer.removeListener(event, listener);
 }
 
-contextBridge.exposeInMainWorld('scd', { isDesktop: true, platform: process.platform, invoke, on });
+contextBridge.exposeInMainWorld('scd', { isDesktop: true, platform: process.platform, invoke, invokeSync, on });

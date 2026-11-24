@@ -40,7 +40,9 @@
       "status": "native-web"
     },
     "Image": {
-      "status": "native-web"
+      "status": "shim",
+      "file": "react-native.tsx",
+      "note": "القسم 5: عناوين file:// تُعرض عبر blob: (CSP/Chromium يمنعان file:// من app://)؛ غيرها يمرّ كما هو"
     },
     "Modal": {
       "status": "shim",

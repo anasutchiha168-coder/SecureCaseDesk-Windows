@@ -40,6 +40,9 @@ function buildHandlers(ctx) {
   add('scd:window:close', none, () => { win().close(); return null; });
   add('scd:window:state', none, () => windowState(win()));
 
+  // القسم 5: الملفات والطباعة والمشاركة (تُحقن الخدمات من main.cjs؛ دونها تبقى القنوات NOT_IMPLEMENTED).
+  if (ctx.files) require('./fs-handlers.cjs').registerFiles(add, ctx);
+
   // القنوات غير المنفّذة بعد: فشل صريح بدل الصمت (تُستبدل في الأقسام 5–7).
   for (const [channel, section] of Object.entries(CHANNELS)) {
     if (h.has(channel)) continue;

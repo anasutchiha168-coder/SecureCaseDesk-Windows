@@ -18,7 +18,7 @@ function setup({ maximized = false } = {}) {
   };
   const app = { getVersion: () => '2.2.0', isPackaged: true, getLocale: () => 'ar', relaunch: () => calls.push('relaunch'), exit: (c) => calls.push('exit' + c) };
   const handlers = new Map();
-  const ipcMain = { handle: (ch, fn) => handlers.set(ch, fn) };
+  const ipcMain = { handle: (ch, fn) => handlers.set(ch, fn), on: () => {} };
   const logs = [];
   const logger = { info() {}, warn: (m) => logs.push(m), error: (m) => logs.push(m) };
   registerIpc({
@@ -81,7 +81,7 @@ test('قنوات النافذة والتطبيق تنفّذ فعلاً', async (
 
 test('قنوات الأقسام 5–7 تفشل صراحةً مع رقم القسم', async () => {
   const { handlers, ev } = setup();
-  for (const [ch, sec] of [['scd:fs:read', 5], ['scd:db:open', 6], ['scd:secure:get', 7], ['scd:print:to-pdf', 5]]) {
+  for (const [ch, sec] of [['scd:db:open', 6], ['scd:db:tx', 6], ['scd:secure:get', 7], ['scd:auth:prompt', 7]]) {
     const r = await handlers.get(ch)(ev(), {});
     assert.equal(r.error.code, 'NOT_IMPLEMENTED');
     assert.match(r.error.message, new RegExp(`القسم ${sec}`));
@@ -96,7 +96,7 @@ test('أخطاء داخلية لا تسرّب رسالتها الأصلية لل
   const win = { webContents: wc, isDestroyed: () => false };
   const m = new Map();
   registerIpc({
-    ipcMain: { handle: (c, f) => m.set(c, f) }, logger: { warn() {}, error: (x) => calls.push(x) }, getWindow: () => win,
+    ipcMain: { handle: (c, f) => m.set(c, f), on: () => {} }, logger: { warn() {}, error: (x) => calls.push(x) }, getWindow: () => win,
     handlers: buildHandlers({ app: { getVersion: () => { throw new Error('C:\\Users\\secret\\path'); }, isPackaged: true, getLocale: () => 'ar' }, getWindow: () => win, versions: {}, platform: 'win32', arch: 'x64' }),
   });
   const r = await m.get('scd:app:info')({ sender: wc, senderFrame: wc.mainFrame });

@@ -5,7 +5,8 @@
 export const SCD_CHANNELS = {
   app:    { relaunch: 'scd:app:relaunch', reload: 'scd:app:reload', info: 'scd:app:info' },
   window: { minimize: 'scd:window:minimize', toggleMaximize: 'scd:window:toggle-maximize', close: 'scd:window:close', state: 'scd:window:state' },
-  fs:     { read: 'scd:fs:read', write: 'scd:fs:write', exists: 'scd:fs:exists', remove: 'scd:fs:remove', list: 'scd:fs:list', stat: 'scd:fs:stat', mkdir: 'scd:fs:mkdir', openDialog: 'scd:fs:open-dialog', saveDialog: 'scd:fs:save-dialog' },
+  fs:     { read: 'scd:fs:read', write: 'scd:fs:write', exists: 'scd:fs:exists', remove: 'scd:fs:remove', list: 'scd:fs:list', stat: 'scd:fs:stat', mkdir: 'scd:fs:mkdir', openDialog: 'scd:fs:open-dialog', saveDialog: 'scd:fs:save-dialog',
+          roots: 'scd:fs:roots', copy: 'scd:fs:copy', move: 'scd:fs:move', readRange: 'scd:fs:read-range', writeAt: 'scd:fs:write-at' },
   db:     { open: 'scd:db:open', exec: 'scd:db:exec', run: 'scd:db:run', all: 'scd:db:all', first: 'scd:db:first', tx: 'scd:db:tx', close: 'scd:db:close' },
   secure: { get: 'scd:secure:get', set: 'scd:secure:set', remove: 'scd:secure:remove' },
   auth:   { available: 'scd:auth:available', prompt: 'scd:auth:prompt' },
@@ -17,13 +18,16 @@ export const SCD_EVENTS = { windowState: 'scd:event:window-state' } as const;
 
 export type ScdErrorCode =
   | 'CHANNEL_NOT_ALLOWED' | 'EVENT_NOT_ALLOWED' | 'UNTRUSTED_SENDER' | 'INVALID_PAYLOAD'
-  | 'NOT_IMPLEMENTED' | 'NO_WINDOW' | 'INTERNAL';
+  | 'NOT_IMPLEMENTED' | 'NO_WINDOW' | 'INTERNAL'
+  | 'FS_FORBIDDEN' | 'NOT_FOUND' | 'ALREADY_EXISTS' | 'ACCESS_DENIED' | 'BUSY' | 'DISK_FULL' | 'IO_ERROR' | 'FILE_TOO_LARGE' | 'PRINT_FAILED';
 
 export interface ScdBridge {
   readonly isDesktop: true;
   readonly platform: string;
   // الأخطاء ترجع برسالة بالشكل: "[CODE] message" (contextBridge ينسخ الرسالة فقط). استخدم parseScdError.
   invoke<T = unknown>(channel: string, payload?: unknown): Promise<T>;
+  // متزامن (قنوات الملفات فقط): واجهة File/Directory في expo-file-system متزامنة.
+  invokeSync<T = unknown>(channel: string, payload?: unknown): T;
   on(event: string, callback: (data: unknown) => void): () => void;
 }
 

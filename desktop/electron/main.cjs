@@ -11,6 +11,8 @@ const { createLogger } = require('./lib/logger.cjs');
 const { buildHandlers, windowState } = require('./ipc/handlers.cjs');
 const { registerIpc } = require('./ipc/register.cjs');
 const { installMenu } = require('./menu.cjs');
+const { createFsService } = require('./lib/fs-service.cjs');
+const { createPrintService } = require('./lib/print-service.cjs');
 
 const SMOKE = process.env.SCD_SMOKE === '1';
 const DEV_ORIGIN = sec.parseDevUrl(process.env.SCD_DEV_URL, app.isPackaged);
@@ -180,6 +182,16 @@ if (!SMOKE && !app.requestSingleInstanceLock()) {
   app.whenReady().then(() => {
     logger = createLogger(path.join(app.getPath('userData'), 'logs'));
     logger.info(`بدء SecureCaseDesk ${app.getVersion()} (Electron ${process.versions.electron})${SMOKE ? ' [smoke]' : ''}`);
+    // القسم 5: documents (دائم) وcache (يُفرَّغ عند الإقلاع والإغلاق لأنه قد يحوي مرفقات مفكوكة).
+    const files = createFsService({
+      documentRoot: path.join(app.getPath('userData'), 'documents'),
+      cacheRoot: path.join(app.getPath('userData'), 'cache'),
+      platform: process.platform,
+    });
+    files.ensureRoots();
+    files.purgeCache();
+    const printer = createPrintService({ BrowserWindow, files, platform: process.platform });
+    app.on('will-quit', () => { files.purgeCache(); });
     installProtocol();
     lockDownSession();
     installMenu({ dev: DEV });
@@ -190,6 +202,7 @@ if (!SMOKE && !app.requestSingleInstanceLock()) {
       getWindow: () => mainWindow,
       handlers: buildHandlers({
         app, getWindow: () => mainWindow, versions: process.versions, platform: process.platform, arch: process.arch,
+        files, printer, dialog, shell,
       }),
     });
     const win = createWindow();
