@@ -7,7 +7,7 @@ export const ID_TYPES: readonly string[] = [
 // نوع هوية لا يلزمه رقم (تعليمات المعلومية: «بدون» عند عدم وجود بطاقة، «غيرمبين» عند وجودها في المنزل).
 export const NO_ID_TYPES: readonly string[] = ['بدون', 'غيرمبين'];
 export const CASE_ROLES: readonly string[] = ['فاعل', 'شريك', 'مشتبه به', 'محرض', 'رهينة', 'غيرمبين'];
-export const LEGAL_STATUSES: readonly string[] = ['رهن جمع الاستدلالات', 'على ذمة النيابة', 'على ذمة المحكمة'];
+export const LEGAL_STATUSES: readonly string[] = ['رهن جمع الاستدلالات', 'على ذمة النيابة', 'على ذمة المحكمة', 'محكوم'];
 
 // SECURECASEDESK_DETAINEES_V22_S6A
 // أنواع الخروج المعتمدة من ورقة «بيانات خاص» (العمود الرابع) في ملف Excel.

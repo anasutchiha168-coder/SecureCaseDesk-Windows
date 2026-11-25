@@ -4,6 +4,8 @@ import { getDb } from '../database/db';
 import { requirePerm } from '../security/guard';
 import type { Session } from '../security/guard';
 import * as core from '../modules/detainees/detainees-core';
+import * as xl from '../modules/detainees/excel-import';
+import { EXIT_TYPES } from '../modules/detainees/detainees-lists';
 import * as Crypto from 'expo-crypto';
 
 const ctx: core.Ctx = { newId: () => Crypto.randomUUID() };
@@ -66,4 +68,10 @@ export async function redetainPerson(session: Session | null | undefined, input:
 export async function listPersonMovements(session: Session | null | undefined, personId: string) {
   const s = requirePerm(session, 'detainees.view');
   return core.listPersonMovements(await coreDb(), String(s.userId), personId);
+}
+
+// SECURECASEDESK_DETAINEES_V22_S9 - تنفيذ خطة استيراد Excel (معاملة واحدة: كل شيء أو لا شيء).
+export async function importDetaineesPlan(session: Session | null | undefined, plan: xl.ImportPlan) {
+  const s = requirePerm(session, 'detainees.manage');
+  return xl.runImport(await coreDb(), String(s.userId), plan, { exitTypes: EXIT_TYPES, newId: ctx.newId });
 }

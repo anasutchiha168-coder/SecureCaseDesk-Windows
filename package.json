@@ -24,6 +24,7 @@
     "expo-status-bar": "~58.0.5",
     "expo-system-ui": "~58.0.7",
     "expo-updates": "~58.0.22",
+    "fflate": "^0.8.3",
     "lucide-react-native": "^1.73.0",
     "react": "19.3.0",
     "react-native": "0.88.1",
@@ -82,7 +83,8 @@
     "test:sync-readiness": "tsx --tsconfig tests/tsconfig.json --test tests/sync-readiness.test.ts",
     "test:cases-actions": "tsx --tsconfig tests/tsconfig.json --test tests/cases-actions.test.ts",
     "test:excel-import": "tsx --tsconfig tests/tsconfig.json --test tests/excel-import.test.ts",
-    "test:detainees-integrity": "tsx --tsconfig tests/tsconfig.json --test tests/detainees-integrity.test.ts"
+    "test:detainees-integrity": "tsx --tsconfig tests/tsconfig.json --test tests/detainees-integrity.test.ts",
+    "test:xlsx-reader": "tsx --tsconfig tests/tsconfig.json --test tests/xlsx-reader.test.ts tests/xlsx-zip.test.ts"
   },
   "private": true
 }

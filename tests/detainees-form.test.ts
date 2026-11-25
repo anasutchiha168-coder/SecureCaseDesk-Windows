@@ -65,7 +65,7 @@ describe('detainees form builder', () => {
   test('lists come from the Excel and core accepts period notes', () => {
     assert.equal(ID_TYPES.length, 11);
     assert.equal(CASE_ROLES.length, 6);
-    assert.equal(LEGAL_STATUSES.length, 3);
+    assert.equal(LEGAL_STATUSES.length, 4);
     assert.ok((PERIOD_TEXT_FIELDS as readonly string[]).includes('notes'));
     assert.equal(normalizeDigits('٠١٢۳'), '0123');
   });

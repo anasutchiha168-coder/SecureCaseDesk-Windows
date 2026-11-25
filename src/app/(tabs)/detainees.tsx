@@ -4,8 +4,9 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { View, Text, FlatList, Alert, ActivityIndicator } from 'react-native';
 import {
   Users, UserPlus, UserMinus, LogIn, LogOut, ArrowLeftRight, ArrowLeft, Pencil, Check, Clock, CalendarDays,
-  Tag, MapPin, ShieldCheck, History, UserRound, ArrowUpDown, Paperclip, Lock, AlertTriangle, Activity, Layers, FileText,
+  Tag, MapPin, ShieldCheck, History, UserRound, ArrowUpDown, Paperclip, Lock, AlertTriangle, Activity, Layers, FileText, BookOpen, FileSpreadsheet,
 } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { getDb } from '@/database/db';
 import { Colors, Palette, Type, tint, Glow } from '@/constants/theme';
 import { ROW } from '@/constants/rtl';
@@ -453,6 +454,7 @@ const OverviewTab = React.memo(function OverviewTab({ detail, transfers }: { det
 /* ───────────── الشاشة ───────────── */
 export default function DetaineesScreen() {
   const { user } = useAuth();
+  const router = useRouter();
   const session = useMemo<Session | null>(
     () => (user ? { userId: user.id, role: user.role } : null),
     [user?.id, user?.role]
@@ -1203,7 +1205,11 @@ export default function DetaineesScreen() {
   return (
     <Screen>
       <PageHeader title="المحتجزون" subtitle="الملفات والحركة التاريخية وسجل التصحيحات" icon={Users} color={Palette.green}
-        actions={canAdd ? <IconBtn icon={UserPlus} label="تسجيل محتجز جديد" solid color={Palette.green} onPress={openForm} /> : undefined} />
+        actions={<>
+          <IconBtn icon={BookOpen} label="التعليمات والمواد القانونية" color={Palette.gold} onPress={() => router.push('/detainees-instructions' as never)} />
+          {canAdd ? <IconBtn icon={FileSpreadsheet} label="استيراد من إكسل" color={Palette.purple} onPress={() => router.push('/detainees-import' as never)} /> : null}
+          {canAdd ? <IconBtn icon={UserPlus} label="تسجيل محتجز جديد" solid color={Palette.green} onPress={openForm} /> : null}
+        </>} />
       <SearchField value={searchText} onChangeText={setSearchText} placeholder="ابحث بالاسم أو الرقم المرجعي..." />
       <View style={{ height: 10 }} />
       <FilterChips options={chips} value={statusFilter} onChange={setStatusFilter} />
