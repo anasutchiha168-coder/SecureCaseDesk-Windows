@@ -31,6 +31,7 @@ export const PERIOD_NEW_COLUMNS: readonly (readonly [string, string])[] = [
   ['exit_procedure', 'TEXT'],                   // إجراءات الخروج
   ['exit_directive_source', 'TEXT'],            // مصدر التوجيه بالخروج
   ['classification_id', 'TEXT REFERENCES crime_classifications(id)'], // التصنيف القانوني للجريمة (القسم 5)
+  ['place_of_detention', 'TEXT'],               // مكان الاحتجاز أو السجن (عمود Excel 19)
   ['legacy_serial', 'TEXT'],                    // عمود «م» في Excel (غير فريد؛ للمرجعية فقط)
 ];
 

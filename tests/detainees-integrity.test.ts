@@ -128,4 +128,14 @@ describe('section 8 - lifecycle and integrity', () => {
     await assert.rejects(redetain(db, r.personId, { admissionDate: D(5) }), /DATE_BEFORE_PREVIOUS_EXIT/);
     assertInvariants(db);
   });
+  test('place_of_detention is stored on the period and survives exit and re-detention', async () => {
+    const db = await setup();
+    const r = await make(db, { period: { place_of_detention: 'place-x' } });
+    assert.equal(all(db, 'SELECT place_of_detention AS p FROM detainees WHERE id = ?', r.detaineeId)[0].p, 'place-x');
+    await exit(db, r.detaineeId, { exitProcedure: 'proc', exitDirectiveSource: 'src' });
+    const r2 = await redetain(db, r.personId, { period: { place_of_detention: 'place-y' } });
+    assert.equal(all(db, 'SELECT place_of_detention AS p FROM detainees WHERE id = ?', r2.detaineeId)[0].p, 'place-y');
+    assert.equal(all(db, 'SELECT place_of_detention AS p FROM detainees WHERE id = ?', r.detaineeId)[0].p, 'place-x');
+    assertInvariants(db);
+  });
 });

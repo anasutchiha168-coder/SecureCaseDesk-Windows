@@ -32,7 +32,7 @@ export interface PlannedRecord {
   };
   category: string; authority: string; offense: string;
   admissionTs: number; releaseTs: number | null; held: boolean;
-  age: number | null; caseRole: string | null; reportNo: string | null; legalStatus: string | null;
+  age: number | null; caseRole: string | null; reportNo: string | null; legalStatus: string | null; placeOfDetention: string | null;
   referralTs: number | null; exitKind: ExitKind | null; exitProcedure: string | null; exitSource: string | null;
   notes: string | null; flags: string[];
 }
@@ -170,7 +170,6 @@ export function planImport(rows: readonly RawRow[], opts: { now?: number } = {})
     }
     if (rel !== null && rawExitType && !kind) flags.push('نوع خروج لم يُصنَّف تلقائياً (النص محفوظ في إجراءات الخروج)');
 
-    if (text(r.place)) periodNotes.push('مكان الاحتجاز: ' + text(r.place));
     if (text(r.notes)) periodNotes.push(text(r.notes) as string);
 
     const ageNum = text(r.age) && /^\d{1,3}$/.test(text(r.age) as string) ? Number(text(r.age)) : null;
@@ -188,7 +187,7 @@ export function planImport(rows: readonly RawRow[], opts: { now?: number } = {})
       },
       category: mapCategory(text(r.depositAuthority)), authority: text(r.depositAuthority) ?? '', offense,
       admissionTs: adm, releaseTs: rel, held: rel === null, age: ageNum,
-      caseRole: text(r.caseRole), reportNo: textNoZero(r.reportNo), legalStatus: legal,
+      caseRole: text(r.caseRole), reportNo: textNoZero(r.reportNo), legalStatus: legal, placeOfDetention: text(r.place),
       referralTs: dateToTs(r.referralDate), exitKind: rel !== null ? kind : null,
       exitProcedure: rel !== null ? procedure : null, exitSource: rel !== null ? text(r.exitSource) : null,
       notes: periodNotes.length ? periodNotes.join(' | ') : null, flags,
@@ -302,12 +301,12 @@ export async function runImport(db: CoreDb, userId: string, plan: ImportPlan, op
       await db.runAsync(
         `INSERT INTO detainees (id, person_id, period_no, reference_number, full_name, category_id, admission_date, release_date,
            alleged_offense, detaining_authority, status, age_at_admission, case_role, report_number, legal_status,
-           prosecution_referral_date, exit_type, exit_procedure, exit_directive_source, legacy_serial, notes,
+           prosecution_referral_date, exit_type, exit_procedure, exit_directive_source, legacy_serial, place_of_detention, notes,
            created_by, created_at, updated_at)
-         VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [detId, personId, r.reference, r.fullName, catId, r.admissionTs, r.releaseTs, r.offense, r.authority,
           r.held ? STATUS_HELD : STATUS_RELEASED, r.age, r.caseRole, r.reportNo, r.legalStatus, r.referralTs,
-          resolveExitType(r.exitKind, opts.exitTypes), r.exitProcedure, r.exitSource, r.legacySerial, r.notes,
+          resolveExitType(r.exitKind, opts.exitTypes), r.exitProcedure, r.exitSource, r.legacySerial, r.placeOfDetention, r.notes,
           userId, now, now]);
       const label = authorityLabel(r.category, r.authority) || null;
       const move = async (type: string, date: number, prev: string | null, next: string | null, reason: string) => {

@@ -26,6 +26,7 @@ export interface DetentionFormValues {
   legalStatus: string | null;
   referral: DateParts;
   notes: string;
+  placeOfDetention?: string;
   classificationId?: string | null;
 }
 
@@ -111,7 +112,7 @@ export function buildDetentionInput(v: DetentionFormValues, now: number = Date.n
       },
       period: {
         age_at_admission: age, case_role: v.caseRole, report_number: normalizeDigits(v.reportNumber.trim()),
-        legal_status: v.legalStatus, prosecution_referral_date: referral, notes: v.notes,
+        legal_status: v.legalStatus, prosecution_referral_date: referral, place_of_detention: (v.placeOfDetention ?? '').trim(), notes: v.notes,
       },
     },
   };

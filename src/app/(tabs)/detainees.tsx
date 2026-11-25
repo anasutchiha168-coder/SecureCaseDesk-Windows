@@ -12,13 +12,14 @@ import { ROW } from '@/constants/rtl';
 import { useAuth } from '@/context/AuthContext';
 import AttachmentsPanel from '@/components/attachments/AttachmentsPanel';
 import { can } from '@/security/permissions';
-import { ID_TYPES, CASE_ROLES, LEGAL_STATUSES } from '@/modules/detainees/detainees-lists';
+import { ID_TYPES, CASE_ROLES, LEGAL_STATUSES, EXIT_TYPES } from '@/modules/detainees/detainees-lists';
 import { buildDetentionInput } from '@/modules/detainees/detainees-form';
 import { listCrimeClassifications, type ClassificationRow } from '@/services/detainees.service';
 import type { Session } from '@/security/guard';
 import {
   createDetention,
-  releasePeriod,
+  exitPeriod,
+  redetainPerson,
   transferPeriod,
   correctPeriodField,
 } from '@/services/detainees-actions.service';
@@ -57,6 +58,8 @@ interface DetaineeDetail {
   alleged_offense: string;
   detaining_authority: string;
   status: string;
+  person_id: string;
+  place_of_detention: string | null;
 }
 
 interface MovementRow {
@@ -280,7 +283,7 @@ const DetaineeCard = React.memo(function DetaineeCard({ item, index, onOpen }: {
         </View>
         <View style={{ flexDirection: ROW, flexWrap: 'wrap', rowGap: 8, columnGap: 12, marginTop: 12 }}>
           <MetaItem icon={Tag} label="الفئة" value={item.category_name ?? 'غير محددة'} />
-          <MetaItem icon={MapPin} label="مكان الاحتجاز" value={item.detaining_authority ? item.detaining_authority : 'غير محدد'} />
+          <MetaItem icon={MapPin} label="جهة الإيداع" value={item.detaining_authority ? item.detaining_authority : 'غير محدد'} />
           <MetaItem icon={CalendarDays} label="تاريخ الدخول" value={formatDate(item.admission_date)} />
           <MetaItem icon={Clock} label={released ? 'مدة الاحتجاز (انتهت)' : 'مدة الاحتجاز'} value={durationText(item.admission_date, item.release_date)} />
           {released && item.release_date !== null ? <MetaItem icon={LogOut} label="تاريخ الإفراج" value={formatDate(item.release_date)} color={Palette.purple} /> : null}
@@ -308,9 +311,9 @@ function MovementExtra({ m }: { m: MovementRow }) {
           </View>
         </View>
       ) : m.new_authority ? (
-        <MetaItem icon={MapPin} label="مكان الاحتجاز" value={m.new_authority} color={Palette.green} />
+        <MetaItem icon={MapPin} label="جهة الإيداع" value={m.new_authority} color={Palette.green} />
       ) : m.previous_authority ? (
-        <MetaItem icon={MapPin} label="مكان الاحتجاز السابق" value={m.previous_authority} color={Palette.gold} />
+        <MetaItem icon={MapPin} label="جهة الإيداع السابقة" value={m.previous_authority} color={Palette.gold} />
       ) : null}
       {m.reason ? (
         <View>
@@ -436,7 +439,8 @@ const OverviewTab = React.memo(function OverviewTab({ detail, transfers }: { det
         <View style={{ flexDirection: ROW, flexWrap: 'wrap', rowGap: 12, columnGap: 12 }}>
           <MetaItem icon={Layers} label="رقم الملف" value={detail.reference_number} />
           <MetaItem icon={Tag} label="الفئة" value={detail.category_name ?? 'غير محددة'} />
-          <MetaItem icon={MapPin} label="مكان الاحتجاز" value={detail.detaining_authority !== '' ? detail.detaining_authority : 'غير محدد'} />
+          <MetaItem icon={MapPin} label="جهة الإيداع" value={detail.detaining_authority !== '' ? detail.detaining_authority : 'غير محدد'} />
+          <MetaItem icon={MapPin} label="مكان الاحتجاز أو السجن" value={detail.place_of_detention ? detail.place_of_detention : 'غير محدد'} />
           <MetaItem icon={Clock} label="مدة الاحتجاز" value={durationText(detail.admission_date, detail.release_date)} />
         </View>
         <Text style={[Type.caption, { color: Colors.textMuted, textAlign: 'right', marginTop: 14 }]}>التهمة المنسوبة</Text>
@@ -496,6 +500,7 @@ export default function DetaineesScreen() {
   const [fRefM, setFRefM] = useState('');
   const [fRefY, setFRefY] = useState('');
   const [fNotes, setFNotes] = useState('');
+  const [fPlace, setFPlace] = useState('');
   const [fListPick, setFListPick] = useState<'id' | 'role' | 'status' | null>(null);
   const [fClasses, setFClasses] = useState<ClassificationRow[]>([]);
   const [fClsId, setFClsId] = useState<string | null>(null);
@@ -600,6 +605,7 @@ export default function DetaineesScreen() {
       console.error('[Detainees] classifications error:', e);
       setFClasses([]);
     }
+    setFPlace('');
     setShowForm(true);
   };
 
@@ -624,7 +630,7 @@ export default function DetaineesScreen() {
       idType: fIdType, idNumber: fIdNumber, phone: fPhone, age: fAge,
       governorate: fGov, district: fDistrict, subDistrict: fSub, residence: fResidence, occupation: fJob,
       caseRole: fRole, reportNumber: fReport, legalStatus: fStatus,
-      referral: { d: fRefD, m: fRefM, y: fRefY }, notes: fNotes, classificationId: fClsId,
+      referral: { d: fRefD, m: fRefM, y: fRefY }, notes: fNotes, placeOfDetention: fPlace, classificationId: fClsId,
     });
     if (!built.ok) { setFormError(built.error); return; }
 
@@ -671,6 +677,22 @@ export default function DetaineesScreen() {
   const [aReason, setAReason] = useState('');
   const [aAuthority, setAAuthority] = useState('');
   const [aCategoryId, setACategoryId] = useState<string | null>(null);
+  const [aExitType, setAExitType] = useState<string | null>(null);
+  const [aProcedure, setAProcedure] = useState('');
+  const [aSource, setASource] = useState('');
+  const [showExitPicker, setShowExitPicker] = useState(false);
+  // إعادة الاحتجاز
+  const [showRe, setShowRe] = useState(false);
+  const [showRePicker, setShowRePicker] = useState(false);
+  const [reRef, setReRef] = useState('');
+  const [reOffense, setReOffense] = useState('');
+  const [reAuthority, setReAuthority] = useState('');
+  const [reCategoryId, setReCategoryId] = useState<string | null>(null);
+  const [reDay, setReDay] = useState('');
+  const [reMonth, setReMonth] = useState('');
+  const [reYear, setReYear] = useState('');
+  const [reError, setReError] = useState('');
+  const [reSaving, setReSaving] = useState(false);
   const [corrections, setCorrections] = useState<CorrectionRow[]>([]);
   const [showCorrection, setShowCorrection] = useState(false);
   const [cField, setCField] = useState<CorrectionField>('full_name');
@@ -684,7 +706,7 @@ export default function DetaineesScreen() {
     const row = await db.getFirstAsync<DetaineeDetail>(
       `SELECT d.id, d.reference_number, d.full_name, d.category_id, d.admission_date,
               d.release_date, d.alleged_offense, d.detaining_authority, d.status,
-              c.name AS category_name
+              d.person_id, d.place_of_detention, c.name AS category_name
        FROM detainees d
        LEFT JOIN detainee_categories c ON c.id = d.category_id
        WHERE d.id = ?`,
@@ -778,6 +800,9 @@ export default function DetaineesScreen() {
     setAMonth(t.m);
     setAYear(t.y);
     setAReason('');
+    setAExitType(null);
+    setAProcedure('');
+    setASource('');
     setAError('');
     setAAuthority(detail.detaining_authority);
     setACategoryId(detail.category_id);
@@ -802,7 +827,10 @@ export default function DetaineesScreen() {
     setAError('');
     try {
       if (type === 'release') {
-        await releasePeriod(session, { detaineeId: detail.id, releaseDate: ts, reason });
+        await exitPeriod(session, {
+          detaineeId: detail.id, exitDate: ts, exitType: aExitType ?? '',
+          exitProcedure: aProcedure.trim() || null, exitDirectiveSource: aSource.trim() || null, reason,
+        });
       } else {
         if (!target) throw new Error('NO_TARGET');
         await transferPeriod(session, {
@@ -830,6 +858,8 @@ export default function DetaineesScreen() {
       } else if (msg.includes('STATE_CHANGED')) {
         setAError('تغيّرت حالة المحتجز ولم يتم تسجيل أي حركة');
         await refreshAfterAction(detail.id);
+      } else if (msg.includes('VALIDATION:exit_type')) {
+        setAError('اختر نوع الخروج');
       } else if (msg.includes('CHECK constraint')) {
         setAError('التاريخ غير مقبول، ولم يتم تسجيل أي حركة');
       } else {
@@ -883,6 +913,10 @@ export default function DetaineesScreen() {
       }
     }
 
+    if (action === 'release' && !aExitType) {
+      setAError('اختر نوع الخروج');
+      return;
+    }
     setAError('');
     const reason = aReason.trim();
     const chosenTarget = target;
@@ -894,6 +928,79 @@ export default function DetaineesScreen() {
         { text: 'تأكيد', onPress: () => persistAction(ts, reason, chosenTarget, newAuthority) },
       ]
     );
+  };
+
+  const openRedetain = async () => {
+    if (!canAdd || !detail) return;
+    if (detail.status === 'محتجز') {
+      Alert.alert('تنبيه', 'هذا الشخص محتجز حالياً');
+      return;
+    }
+    try {
+      const db = await getDb();
+      const rows = await db.getAllAsync<CategoryRow>(
+        'SELECT id, name FROM detainee_categories WHERE is_active = 1 ORDER BY rowid'
+      );
+      setCategories(rows);
+    } catch (e) {
+      console.error('[Detainees] categories error:', e);
+      Alert.alert('خطأ', 'تعذر تحميل فئات المحتجزين');
+      return;
+    }
+    const t = todayParts();
+    setReDay(t.d); setReMonth(t.m); setReYear(t.y);
+    setReRef('');
+    setReOffense(detail.alleged_offense);
+    setReAuthority(detail.detaining_authority);
+    setReCategoryId(detail.category_id);
+    setReError('');
+    setShowRe(true);
+  };
+
+  const closeRedetain = () => {
+    if (reSaving) return;
+    setShowRePicker(false);
+    setShowRe(false);
+  };
+
+  const submitRedetain = async () => {
+    if (reSaving || !detail || !user || !canAdd) return;
+    const ref = normalizeDigits(reRef.trim());
+    if (!ref) { setReError('الرقم المرجعي الجديد مطلوب'); return; }
+    if (!reOffense.trim()) { setReError('التهمة المنسوبة مطلوبة'); return; }
+    if (!reCategoryId) { setReError('اختر الفئة'); return; }
+    const ts = parseDate(normalizeDigits(reDay.trim()), normalizeDigits(reMonth.trim()), normalizeDigits(reYear.trim()));
+    if (ts === null) { setReError('التاريخ غير صحيح، تأكد من اليوم والشهر والسنة'); return; }
+    if (ts > endOfToday()) { setReError('التاريخ لا يمكن أن يكون في المستقبل'); return; }
+    if (detail.release_date !== null && ts < detail.release_date) {
+      setReError('تاريخ الدخول الجديد لا يسبق تاريخ الخروج السابق (' + formatDate(detail.release_date) + ')');
+      return;
+    }
+    setReSaving(true);
+    setReError('');
+    try {
+      await redetainPerson(session, {
+        personId: detail.person_id, referenceNumber: ref, allegedOffense: reOffense.trim(),
+        categoryId: reCategoryId, detainingAuthority: reAuthority.trim(), admissionDate: ts,
+      });
+      setShowRePicker(false);
+      setShowRe(false);
+      closeDetail();
+      await loadDetainees(query);
+      void loadStats();
+      Alert.alert('تم الحفظ', 'تم تسجيل فترة احتجاز جديدة لنفس الشخص');
+    } catch (e) {
+      console.error('[Detainees] redetain error:', e);
+      const msg = String((e as Error)?.message ?? '');
+      if (msg.includes('FORBIDDEN')) setReError('ليست لديك صلاحية تنفيذ هذا الإجراء');
+      else if (msg.includes('PERSON_ALREADY_HELD')) setReError('هذا الشخص محتجز حالياً في فترة مفتوحة');
+      else if (msg.includes('DATE_BEFORE_PREVIOUS_EXIT')) setReError('تاريخ الدخول الجديد يسبق تاريخ الخروج السابق');
+      else if (msg.includes('DUPLICATE_REFERENCE')) setReError('الرقم المرجعي مستخدم لمحتجز آخر');
+      else if (msg.includes('CATEGORY_NOT_FOUND')) setReError('الفئة المختارة غير متاحة');
+      else setReError('تعذر الحفظ ولم يتم تسجيل أي بيانات، حاول مرة أخرى');
+    } finally {
+      setReSaving(false);
+    }
   };
 
   const selectedCategory = categories.find((c) => c.id === categoryId);
@@ -1066,10 +1173,12 @@ export default function DetaineesScreen() {
   ];
   const transfersCount = movements.filter((m) => m.movement_type === 'نقل').length;
   const canRelease = !!detail && canAdd && detail.status === 'محتجز';
-  const detailFooter = detail && (canRelease || canCorrect) ? (
+  const canRedetain = !!detail && canAdd && detail.status === 'مفرج عنه';
+  const detailFooter = detail && (canRelease || canRedetain || canCorrect) ? (
     <>
       {canRelease ? <ActionBtn label="إفراج" icon={LogOut} color={Palette.green} solid onPress={() => openAction('release')} /> : null}
       {canRelease ? <ActionBtn label="نقل" icon={ArrowLeftRight} color={Palette.blue} onPress={() => openAction('transfer')} /> : null}
+      {canRedetain ? <ActionBtn label="إعادة احتجاز" icon={LogIn} color={Palette.cyan} solid onPress={openRedetain} /> : null}
       {canCorrect ? <ActionBtn label="تصحيح" icon={Pencil} color={Palette.gold} onPress={openCorrection} /> : null}
     </>
   ) : undefined;
@@ -1182,7 +1291,8 @@ export default function DetaineesScreen() {
         <Field label="التهمة المنسوبة *" value={offense} onChangeText={setOffense} editable={!saving} placeholder="التهمة" />
         <SelectField label="صفة المحتجز في القضية" value={fRole} placeholder="اختر الصفة" onPress={() => setFListPick('role')} disabled={saving} />
         <Field label="رقم البلاغ" value={fReport} onChangeText={setFReport} editable={!saving} placeholder="اختياري" />
-        <Field label="جهة الحجز" value={authority} onChangeText={setAuthority} editable={!saving} placeholder="اختياري" />
+        <Field label="جهة الإيداع" value={authority} onChangeText={setAuthority} editable={!saving} placeholder="اختياري" />
+        <Field label="مكان الاحتجاز أو السجن" value={fPlace} onChangeText={setFPlace} editable={!saving} placeholder="مثال: الحجز الاحتياطي" />
         <SelectField label="الفئة *" value={selectedCategory?.name} placeholder="اختر الفئة" onPress={() => setShowPicker(true)} disabled={saving} />
         <DateFields label="تاريخ الدخول *" d={day} m={month} y={year} setD={setDay} setM={setMonth} setY={setYear} editable={!saving} />
         <SelectField label="وضع المحتجز" value={fStatus} placeholder="اختر الوضع" onPress={() => setFListPick('status')} disabled={saving} />
@@ -1241,7 +1351,7 @@ export default function DetaineesScreen() {
 
       {/* إفراج / نقل */}
       <Sheet visible={action !== null} onClose={closeAction}
-        title={action === 'release' ? 'تسجيل إفراج' : 'تسجيل نقل'}
+        title={action === 'release' ? 'تسجيل خروج' : 'تسجيل نقل'}
         subtitle={detail ? detail.full_name : undefined}
         footer={<>
           <ActionBtn label={action === 'release' ? 'تسجيل الإفراج' : 'تسجيل النقل'} icon={Check} solid
@@ -1258,7 +1368,49 @@ export default function DetaineesScreen() {
           </>
         ) : null}
         <DateFields label={action === 'release' ? 'تاريخ الإفراج *' : 'تاريخ النقل *'} d={aDay} m={aMonth} y={aYear} setD={setADay} setM={setAMonth} setY={setAYear} editable={!aSaving} />
+        {action === 'release' ? (
+          <>
+            <SelectField label="نوع الخروج *" value={aExitType} placeholder="اختر نوع الخروج" onPress={() => setShowExitPicker(true)} disabled={aSaving} />
+            <Field label="إجراءات الخروج" value={aProcedure} onChangeText={setAProcedure} editable={!aSaving} placeholder="اختياري" />
+            <Field label="مصدر التوجيه بالخروج" value={aSource} onChangeText={setASource} editable={!aSaving} placeholder="اختياري: اسم الجهة أو المسؤول" />
+          </>
+        ) : null}
         <Field label="السبب" value={aReason} onChangeText={setAReason} editable={!aSaving} placeholder="اختياري" />
+      </Sheet>
+
+      <Sheet visible={showExitPicker} onClose={() => setShowExitPicker(false)} title="نوع الخروج">
+        <View style={{ gap: 8 }}>
+          {EXIT_TYPES.map((opt) => {
+            const on = opt === aExitType;
+            return (
+              <Card key={opt} accent={on ? Palette.green : undefined} onPress={() => { setAExitType(opt); setShowExitPicker(false); }} label={opt}>
+                <View style={{ flexDirection: ROW, alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={[Type.bodyLg, { color: on ? Palette.green : Colors.textPrimary }]}>{opt}</Text>
+                  {on ? <Check color={Palette.green} size={18} /> : null}
+                </View>
+              </Card>
+            );
+          })}
+        </View>
+      </Sheet>
+
+      <Sheet visible={showRe} onClose={closeRedetain} title="إعادة احتجاز" subtitle={detail ? detail.full_name : undefined}
+        footer={<>
+          <ActionBtn label="تسجيل فترة جديدة" icon={Check} solid color={Palette.cyan} onPress={submitRedetain} loading={reSaving} />
+          <Btn label="إلغاء" variant="ghost" onPress={closeRedetain} disabled={reSaving} />
+        </>}>
+        <ErrorBanner text={reError} />
+        <NoteBanner icon={Lock} color={Palette.cyan}
+          text="تُفتح فترة احتجاز جديدة لنفس الشخص دون إنشاء شخص جديد، وتبقى الفترة السابقة وحركاتها كما هي." />
+        <Field label="الرقم المرجعي الجديد *" value={reRef} onChangeText={setReRef} editable={!reSaving} placeholder="رقم مرجعي فريد" autoCapitalize="characters" />
+        <Field label="التهمة المنسوبة *" value={reOffense} onChangeText={setReOffense} editable={!reSaving} placeholder="التهمة" />
+        <SelectField label="الفئة *" value={categories.find((c) => c.id === reCategoryId)?.name} placeholder="اختر الفئة" onPress={() => setShowRePicker(true)} disabled={reSaving} />
+        <Field label="جهة الإيداع" value={reAuthority} onChangeText={setReAuthority} editable={!reSaving} placeholder="اختياري" />
+        <DateFields label="تاريخ الدخول الجديد *" d={reDay} m={reMonth} y={reYear} setD={setReDay} setM={setReMonth} setY={setReYear} editable={!reSaving} />
+      </Sheet>
+
+      <Sheet visible={showRePicker} onClose={() => setShowRePicker(false)} title="اختر الفئة">
+        {categoryList(reCategoryId, (c) => { setReCategoryId(c.id); setShowRePicker(false); })}
       </Sheet>
 
       <Sheet visible={showTransferPicker} onClose={() => setShowTransferPicker(false)} title="اختر الفئة الجديدة">
