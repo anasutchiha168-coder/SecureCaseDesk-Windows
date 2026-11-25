@@ -6,6 +6,8 @@
 // لا يُدمج شخصان بتشابه الأسماء أبداً: كل سجل قديم يصبح شخصاً مستقلاً. الدمج قرار بشري موثّق لاحقاً.
 // ترحيل غير هدّام: لا يُحذف ولا يُغيَّر أي عمود أو صف موجود.
 
+import { initClassificationsSchema } from './classifications-schema';
+
 export interface PersonsSchemaDb {
   execAsync(sql: string): Promise<void>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -28,10 +30,12 @@ export const PERIOD_NEW_COLUMNS: readonly (readonly [string, string])[] = [
   ['exit_type', 'TEXT'],                        // نوع الخروج من السجن
   ['exit_procedure', 'TEXT'],                   // إجراءات الخروج
   ['exit_directive_source', 'TEXT'],            // مصدر التوجيه بالخروج
+  ['classification_id', 'TEXT REFERENCES crime_classifications(id)'], // التصنيف القانوني للجريمة (القسم 5)
   ['legacy_serial', 'TEXT'],                    // عمود «م» في Excel (غير فريد؛ للمرجعية فقط)
 ];
 
 export async function initPersonsSchema(db: PersonsSchemaDb): Promise<void> {
+  await initClassificationsSchema(db); // قبل أي مرجع إليه من جدول الفترات
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS persons (
       id TEXT PRIMARY KEY,

@@ -31,7 +31,7 @@ const AUDIT_TABLE_FIELDS: Record<string, string[]> = {
     'officer_id', 'status', 'notes', 'created_by',
     'person_id', 'period_no', 'age_at_admission', 'case_role', 'report_number',
     'legal_status', 'prosecution_referral_date', 'exit_type', 'exit_procedure',
-    'exit_directive_source', 'legacy_serial'
+    'exit_directive_source', 'legacy_serial', 'classification_id'
   ],
   persons: [
     'full_name', 'id_type', 'id_number', 'phone', 'governorate', 'district',
@@ -57,6 +57,9 @@ const AUDIT_TABLE_FIELDS: Record<string, string[]> = {
   ],
   detainee_categories: [
     'name', 'is_active', 'created_at'
+  ],
+  crime_classifications: [
+    'name', 'severity', 'sub_category', 'main_category', 'legal_basis', 'is_active', 'sort_order', 'created_at'
   ],
 };
 

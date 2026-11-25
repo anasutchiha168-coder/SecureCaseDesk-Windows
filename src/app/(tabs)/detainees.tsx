@@ -14,6 +14,7 @@ import AttachmentsPanel from '@/components/attachments/AttachmentsPanel';
 import { can } from '@/security/permissions';
 import { ID_TYPES, CASE_ROLES, LEGAL_STATUSES } from '@/modules/detainees/detainees-lists';
 import { buildDetentionInput } from '@/modules/detainees/detainees-form';
+import { listCrimeClassifications, type ClassificationRow } from '@/services/detainees.service';
 import type { Session } from '@/security/guard';
 import {
   createDetention,
@@ -496,6 +497,10 @@ export default function DetaineesScreen() {
   const [fRefY, setFRefY] = useState('');
   const [fNotes, setFNotes] = useState('');
   const [fListPick, setFListPick] = useState<'id' | 'role' | 'status' | null>(null);
+  const [fClasses, setFClasses] = useState<ClassificationRow[]>([]);
+  const [fClsId, setFClsId] = useState<string | null>(null);
+  const [fClsQuery, setFClsQuery] = useState('');
+  const [fShowCls, setFShowCls] = useState(false);
 
   const loadStats = useCallback(async () => {
     try {
@@ -571,6 +576,7 @@ export default function DetaineesScreen() {
     setFRole(null); setFReport(''); setFStatus(null);
     setFRefD(''); setFRefM(''); setFRefY(''); setFNotes('');
     setFListPick(null);
+    setFClsId(null); setFClsQuery(''); setFShowCls(false);
     setFormError('');
   };
 
@@ -588,6 +594,12 @@ export default function DetaineesScreen() {
       return;
     }
     resetForm();
+    try {
+      setFClasses(await listCrimeClassifications(session));
+    } catch (e) {
+      console.error('[Detainees] classifications error:', e);
+      setFClasses([]);
+    }
     setShowForm(true);
   };
 
@@ -595,6 +607,7 @@ export default function DetaineesScreen() {
     if (saving) return;
     setShowPicker(false);
     setFListPick(null);
+    setFShowCls(false);
     setShowForm(false);
   };
 
@@ -611,7 +624,7 @@ export default function DetaineesScreen() {
       idType: fIdType, idNumber: fIdNumber, phone: fPhone, age: fAge,
       governorate: fGov, district: fDistrict, subDistrict: fSub, residence: fResidence, occupation: fJob,
       caseRole: fRole, reportNumber: fReport, legalStatus: fStatus,
-      referral: { d: fRefD, m: fRefM, y: fRefY }, notes: fNotes,
+      referral: { d: fRefD, m: fRefM, y: fRefY }, notes: fNotes, classificationId: fClsId,
     });
     if (!built.ok) { setFormError(built.error); return; }
 
@@ -884,6 +897,18 @@ export default function DetaineesScreen() {
   };
 
   const selectedCategory = categories.find((c) => c.id === categoryId);
+  const selectedCls = fClasses.find((c) => c.id === fClsId);
+  const nz = (s: string) => s.replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه');
+  const clsMatches = (() => {
+    const q = nz(fClsQuery.trim());
+    const all = q ? fClasses.filter((c) => nz(c.name + ' ' + c.sub_category).includes(q)) : fClasses;
+    return all.slice(0, 40);
+  })();
+  const pickClassification = (c: ClassificationRow | null) => {
+    setFClsId(c ? c.id : null);
+    if (c && !offense.trim()) setOffense(c.name);
+    setFShowCls(false);
+  };
   const pickListValue = (value: string | null) => {
     if (fListPick === 'id') setFIdType(value);
     else if (fListPick === 'role') setFRole(value);
@@ -1153,6 +1178,7 @@ export default function DetaineesScreen() {
         <Field label="العمل" value={fJob} onChangeText={setFJob} editable={!saving} placeholder="اختياري" />
         <SectionTitle title="بيانات الاحتجاز" />
         <Field label="الرقم المرجعي *" value={refNumber} onChangeText={setRefNumber} editable={!saving} placeholder="الرقم المرجعي الفريد" autoCapitalize="characters" />
+        <SelectField label="التصنيف القانوني للجريمة" value={selectedCls?.name} placeholder="اختر من القائمة (اختياري)" onPress={() => setFShowCls(true)} disabled={saving} />
         <Field label="التهمة المنسوبة *" value={offense} onChangeText={setOffense} editable={!saving} placeholder="التهمة" />
         <SelectField label="صفة المحتجز في القضية" value={fRole} placeholder="اختر الصفة" onPress={() => setFListPick('role')} disabled={saving} />
         <Field label="رقم البلاغ" value={fReport} onChangeText={setFReport} editable={!saving} placeholder="اختياري" />
@@ -1184,6 +1210,32 @@ export default function DetaineesScreen() {
             );
           })}
           <Btn label="مسح الاختيار" variant="ghost" onPress={() => pickListValue(null)} />
+        </View>
+      </Sheet>
+
+      <Sheet visible={fShowCls} onClose={() => setFShowCls(false)} title="التصنيف القانوني للجريمة"
+        subtitle={'عدد التصنيفات: ' + toArabicDigits(fClasses.length)}>
+        <Field label="بحث" value={fClsQuery} onChangeText={setFClsQuery} placeholder="اكتب جزءاً من اسم الجريمة" />
+        <View style={{ gap: 8 }}>
+          {clsMatches.length === 0 ? <EmptyState compact icon={Tag} title="لا توجد نتائج" hint="جرّب كلمة أخرى." /> : null}
+          {clsMatches.map((c) => {
+            const on = c.id === fClsId;
+            return (
+              <Card key={c.id} accent={on ? Palette.cyan : undefined} onPress={() => pickClassification(c)} label={c.name}>
+                <View style={{ flexDirection: ROW, alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[Type.bodyLg, { color: on ? Palette.cyan : Colors.textPrimary, textAlign: 'right' }]}>{c.name}</Text>
+                    <Text style={[Type.caption, { color: Colors.textMuted, textAlign: 'right' }]}>{c.severity + ' · ' + c.sub_category}</Text>
+                  </View>
+                  {on ? <Check color={Palette.cyan} size={18} /> : null}
+                </View>
+              </Card>
+            );
+          })}
+          {fClasses.length > 40 && !fClsQuery.trim() ? (
+            <Text style={[Type.caption, { color: Colors.textMuted, textAlign: 'center' }]}>تظهر أول 40 نتيجة، استخدم البحث للوصول لبقية التصنيفات</Text>
+          ) : null}
+          <Btn label="مسح الاختيار" variant="ghost" onPress={() => pickClassification(null)} />
         </View>
       </Sheet>
 

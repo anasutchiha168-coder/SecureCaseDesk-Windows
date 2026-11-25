@@ -55,3 +55,22 @@ export async function listDetaineeCategories(
 // ⚠️ insertDetaineeWithMovement غير مكتوبة بعد عمداً.
 // بانتظار استعلامات INSERT الفعلية من handleSave (السطور ~341-350 من detainees.tsx)
 // قبل كتابة هذه الدالة - لا نخمّن بنية إدراج محتجز أو حركة حجز.
+
+export interface ClassificationRow {
+  id: string;
+  name: string;
+  severity: string;
+  sub_category: string;
+  main_category: string;
+  legal_basis: string;
+}
+
+export async function listCrimeClassifications(
+  session: Session | null | undefined
+): Promise<ClassificationRow[]> {
+  requirePerm(session, 'detainees.view');
+  const db = await getDb();
+  return db.getAllAsync<ClassificationRow>(
+    'SELECT id, name, severity, sub_category, main_category, legal_basis FROM crime_classifications WHERE is_active = 1 ORDER BY sort_order ASC'
+  );
+}

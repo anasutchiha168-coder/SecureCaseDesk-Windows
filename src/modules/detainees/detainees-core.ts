@@ -124,6 +124,7 @@ export interface CreateDetentionInput {
   categoryId: string;
   detainingAuthority?: string;
   admissionDate: number;
+  classificationId?: string | null;
   person?: PersonPatch;
   period?: PeriodPatch;
 }
@@ -154,6 +155,14 @@ export async function createDetention(
       'SELECT id FROM detainees WHERE reference_number = ?', [ref]
     );
     if (dup) throw new Error('DUPLICATE_REFERENCE');
+    let classificationId: string | null = null;
+    if (input.classificationId) {
+      const cls = await db.getFirstAsync<{ id: string }>(
+        'SELECT id FROM crime_classifications WHERE id = ? AND is_active = 1', [input.classificationId]
+      );
+      if (!cls) throw new Error('CLASSIFICATION_NOT_FOUND');
+      classificationId = cls.id;
+    }
 
     const pCols = ['id', 'full_name', ...pp.cols, 'created_by', 'created_at', 'updated_at'];
     await db.runAsync(
@@ -163,13 +172,13 @@ export async function createDetention(
 
     const dCols = [
       'id', 'person_id', 'period_no', 'reference_number', 'full_name', 'category_id',
-      'admission_date', 'alleged_offense', 'detaining_authority', 'status',
+      'admission_date', 'alleged_offense', 'detaining_authority', 'status', 'classification_id',
       ...dp.cols, 'created_by', 'created_at', 'updated_at',
     ];
     await db.runAsync(
       `INSERT INTO detainees (${dCols.join(', ')}) VALUES (${dCols.map(() => '?').join(', ')})`,
       [out.detaineeId, out.personId, 1, ref, name, categoryId, admission, alleged, authority,
-        STATUS_HELD, ...dp.vals, userId, now, now]
+        STATUS_HELD, classificationId, ...dp.vals, userId, now, now]
     );
 
     await insertMovement(db, {

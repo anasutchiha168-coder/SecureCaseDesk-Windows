@@ -26,6 +26,7 @@ export interface DetentionFormValues {
   legalStatus: string | null;
   referral: DateParts;
   notes: string;
+  classificationId?: string | null;
 }
 
 export type FormResult = { ok: true; input: CreateDetentionInput } | { ok: false; error: string };
@@ -102,6 +103,7 @@ export function buildDetentionInput(v: DetentionFormValues, now: number = Date.n
       categoryId: v.categoryId,
       detainingAuthority: v.authority.trim(),
       admissionDate: admission,
+      classificationId: v.classificationId ?? null,
       person: {
         id_type: v.idType, id_number: idNumber, phone,
         governorate: v.governorate, district: v.district, sub_district: v.subDistrict,

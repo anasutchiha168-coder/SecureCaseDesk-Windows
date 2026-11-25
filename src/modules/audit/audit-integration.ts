@@ -126,7 +126,7 @@ export interface AuditCoverage {
 
 const REQUIRED_TABLES = [
   'users', 'departments', 'cases', 'memos', 'memo_types',
-  'persons', 'detainees', 'detainee_categories', 'detainee_movements', 'correction_history',
+  'persons', 'detainees', 'detainee_categories', 'crime_classifications', 'detainee_movements', 'correction_history',
   'attachments',
 ];
 
