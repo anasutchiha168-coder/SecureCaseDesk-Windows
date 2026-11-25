@@ -51,3 +51,19 @@ export async function transferPeriod(session: Session | null | undefined, input:
   const s = requirePerm(session, 'detainees.manage');
   return core.transferPeriod(await coreDb(), String(s.userId), input, ctx);
 }
+
+// SECURECASEDESK_DETAINEES_V22_S6A
+export async function exitPeriod(session: Session | null | undefined, input: core.ExitInput) {
+  const s = requirePerm(session, 'detainees.manage');
+  return core.exitPeriod(await coreDb(), String(s.userId), input, ctx);
+}
+
+export async function redetainPerson(session: Session | null | undefined, input: core.RedetainInput) {
+  const s = requirePerm(session, 'detainees.manage');
+  return core.redetainPerson(await coreDb(), String(s.userId), input, ctx);
+}
+
+export async function listPersonMovements(session: Session | null | undefined, personId: string) {
+  const s = requirePerm(session, 'detainees.view');
+  return core.listPersonMovements(await coreDb(), String(s.userId), personId);
+}

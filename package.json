@@ -67,6 +67,7 @@
     "test:ai-all": "tsx --tsconfig tests/tsconfig.json --test tests/ai-foundation.test.ts tests/ai-search.test.ts tests/ai-summary.test.ts tests/ai-drafting.test.ts tests/ai-final.test.ts",
     "test:persons-schema": "tsx --tsconfig tests/tsconfig.json --test tests/persons-schema.test.ts",
     "test:detainees-service": "tsx --tsconfig tests/tsconfig.json --test tests/detainees-service.test.ts",
+    "test:detainees-movements": "tsx --tsconfig tests/tsconfig.json --test tests/detainees-movements.test.ts",
     "typecheck": "tsc --noEmit",
     "preflight": "node scripts/preflight-build.mjs",
     "test:all": "tsx --tsconfig tests/tsconfig.json --test tests/*.test.ts",

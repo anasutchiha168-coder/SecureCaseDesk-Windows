@@ -8,3 +8,9 @@ export const ID_TYPES: readonly string[] = [
 export const NO_ID_TYPES: readonly string[] = ['بدون', 'غيرمبين'];
 export const CASE_ROLES: readonly string[] = ['فاعل', 'شريك', 'مشتبه به', 'محرض', 'رهينة', 'غيرمبين'];
 export const LEGAL_STATUSES: readonly string[] = ['رهن جمع الاستدلالات', 'على ذمة النيابة', 'على ذمة المحكمة'];
+
+// SECURECASEDESK_DETAINEES_V22_S6A
+// أنواع الخروج المعتمدة من ورقة «بيانات خاص» (العمود الرابع) في ملف Excel.
+export const EXIT_TYPES: readonly string[] = [
+  'تم الافراج عنه', 'تم نقله على القضاء الى سجن اخر', 'تم تسليمه لجهات أخرى',
+];

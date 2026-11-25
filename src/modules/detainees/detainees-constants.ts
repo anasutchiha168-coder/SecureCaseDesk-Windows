@@ -24,3 +24,6 @@ export function authorityLabel(
 ): string {
   return [categoryName ?? '', authority ?? ''].map((s) => s.trim()).filter(Boolean).join(' - ');
 }
+
+// SECURECASEDESK_DETAINEES_V22_S6A
+export const REASON_REDETENTION = '\u0625\u0639\u0627\u062F\u0629 \u0627\u062D\u062A\u062C\u0627\u0632 - \u0627\u0644\u0641\u062A\u0631\u0629 ';

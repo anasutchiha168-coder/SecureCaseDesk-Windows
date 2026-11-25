@@ -4,8 +4,9 @@
 import { can } from '../../security/permissions';
 import {
   STATUS_HELD, STATUS_RELEASED, MOVE_ADMISSION, MOVE_RELEASE, MOVE_TRANSFER, MOVE_CORRECTION,
-  REASON_ADMISSION, REASON_RELEASE, REASON_TRANSFER, FIELD_LABELS, authorityLabel,
+  REASON_ADMISSION, REASON_RELEASE, REASON_TRANSFER, REASON_REDETENTION, FIELD_LABELS, authorityLabel,
 } from './detainees-constants';
+import { EXIT_TYPES } from './detainees-lists';
 import {
   requireText, optionalText, optionalInt, requireTimestamp, startOfDay,
 } from './detainees-validation';
@@ -392,4 +393,163 @@ export async function transferPeriod(
       by: userId, reason: optionalText(input.reason) ?? REASON_TRANSFER, related: null, now,
     });
   });
+}
+
+// SECURECASEDESK_DETAINEES_V22_S6A
+// القسم 6: الخروج المصنّف، إعادة الاحتجاز (فترة جديدة لنفس الشخص)، وسجل حركات الشخص عبر كل فتراته.
+// لا تغيير على releasePeriod/transferPeriod القديمتين. نوع الحركة 'إفراج'/'إيداع' ضمن قيد CHECK الحالي دون تعديل الجدول.
+
+// ---------- typed exit ----------
+export interface ExitInput {
+  detaineeId: string;
+  exitDate: number;
+  exitType: string;                       // إحدى EXIT_TYPES
+  exitProcedure?: string | null;          // إجراءات الخروج (نص حر)
+  exitDirectiveSource?: string | null;    // مصدر التوجيه بالخروج (نص حر)
+  reason?: string;
+}
+
+export async function exitPeriod(
+  db: CoreDb, userId: string, input: ExitInput, ctx: Ctx = {}
+): Promise<void> {
+  const now = ctx.now ?? Date.now();
+  const nid = ctx.newId ?? defaultId;
+  await db.withTransactionAsync(async () => {
+    await assertCan(db, userId, 'detainees.manage');
+    const ts = requireTimestamp(input.exitDate, 'exit_date', now);
+    const exitType = requireText(input.exitType, 'exit_type');
+    if (!EXIT_TYPES.includes(exitType)) throw new Error('VALIDATION:exit_type');
+    const procedure = optionalText(input.exitProcedure);
+    const source = optionalText(input.exitDirectiveSource);
+    const detail = await loadDetail(db, input.detaineeId);
+    if (ts < detail.admission_date) throw new Error('DATE_BEFORE_ADMISSION');
+    const last = await lastMovementDate(db, input.detaineeId);
+    if (last !== null && ts < last) throw new Error('DATE_BEFORE_LAST_MOVEMENT');
+
+    const res = await db.runAsync(
+      `UPDATE detainees
+          SET status = ?, release_date = ?, exit_type = ?, exit_procedure = ?,
+              exit_directive_source = ?, updated_at = ?
+        WHERE id = ? AND status = ? AND release_date IS NULL`,
+      [STATUS_RELEASED, ts, exitType, procedure, source, now, input.detaineeId, STATUS_HELD]
+    );
+    if (res.changes === 0) throw new Error('STATE_CHANGED');
+
+    const why = optionalText(input.reason);
+    const reason = [exitType, procedure].filter(Boolean).join(': ') + (why ? ' - ' + why : '');
+    await insertMovement(db, {
+      id: nid(), detaineeId: input.detaineeId, type: MOVE_RELEASE, date: ts,
+      previous: authorityLabel(detail.category_name, detail.detaining_authority) || null, next: null,
+      by: userId, reason, related: null, now,
+    });
+  });
+}
+
+// ---------- re-detention ----------
+export interface RedetainInput {
+  personId: string;
+  referenceNumber: string;
+  allegedOffense: string;
+  categoryId: string;
+  detainingAuthority?: string;
+  admissionDate: number;
+  classificationId?: string | null;
+  period?: PeriodPatch;
+}
+
+export async function redetainPerson(
+  db: CoreDb, userId: string, input: RedetainInput, ctx: Ctx = {}
+): Promise<{ personId: string; detaineeId: string; movementId: string; periodNo: number }> {
+  const now = ctx.now ?? Date.now();
+  const nid = ctx.newId ?? defaultId;
+  const out = { personId: input.personId, detaineeId: nid(), movementId: nid(), periodNo: 0 };
+
+  await db.withTransactionAsync(async () => {
+    await assertCan(db, userId, 'detainees.manage');
+    const ref = requireText(input.referenceNumber, 'reference_number');
+    const alleged = requireText(input.allegedOffense, 'alleged_offense');
+    const categoryId = requireText(input.categoryId, 'category_id');
+    const admission = requireTimestamp(input.admissionDate, 'admission_date', now);
+    const authority = (input.detainingAuthority ?? '').trim();
+    const dp = buildPatch(input.period as Record<string, unknown> | undefined, PERIOD_TEXT_FIELDS, PERIOD_INT_FIELDS);
+
+    const person = await db.getFirstAsync<{ id: string; full_name: string }>(
+      'SELECT id, full_name FROM persons WHERE id = ?', [input.personId]
+    );
+    if (!person) throw new Error('NOT_FOUND');
+
+    const open = await db.getFirstAsync<{ id: string }>(
+      'SELECT id FROM detainees WHERE person_id = ? AND release_date IS NULL LIMIT 1', [person.id]
+    );
+    if (open) throw new Error('PERSON_ALREADY_HELD');
+
+    const prev = await db.getFirstAsync<{ id: string; period_no: number; release_date: number | null }>(
+      'SELECT id, period_no, release_date FROM detainees WHERE person_id = ? ORDER BY period_no DESC LIMIT 1',
+      [person.id]
+    );
+    if (prev && prev.release_date !== null && admission < prev.release_date) {
+      throw new Error('DATE_BEFORE_PREVIOUS_EXIT');
+    }
+
+    const cat = await db.getFirstAsync<{ id: string; name: string }>(
+      'SELECT id, name FROM detainee_categories WHERE id = ? AND is_active = 1', [categoryId]
+    );
+    if (!cat) throw new Error('CATEGORY_NOT_FOUND');
+    const dup = await db.getFirstAsync<{ id: string }>(
+      'SELECT id FROM detainees WHERE reference_number = ?', [ref]
+    );
+    if (dup) throw new Error('DUPLICATE_REFERENCE');
+    let classificationId: string | null = null;
+    if (input.classificationId) {
+      const cls = await db.getFirstAsync<{ id: string }>(
+        'SELECT id FROM crime_classifications WHERE id = ? AND is_active = 1', [input.classificationId]
+      );
+      if (!cls) throw new Error('CLASSIFICATION_NOT_FOUND');
+      classificationId = cls.id;
+    }
+
+    const prevExit = prev
+      ? await db.getFirstAsync<{ id: string }>(
+          `SELECT id FROM detainee_movements
+            WHERE detainee_id = ? AND movement_type = ?
+            ORDER BY movement_date DESC, created_at DESC, rowid DESC LIMIT 1`,
+          [prev.id, MOVE_RELEASE]
+        )
+      : null;
+
+    const periodNo = (prev?.period_no ?? 0) + 1;
+    out.periodNo = periodNo;
+    const dCols = [
+      'id', 'person_id', 'period_no', 'reference_number', 'full_name', 'category_id',
+      'admission_date', 'alleged_offense', 'detaining_authority', 'status', 'classification_id',
+      ...dp.cols, 'created_by', 'created_at', 'updated_at',
+    ];
+    await db.runAsync(
+      `INSERT INTO detainees (${dCols.join(', ')}) VALUES (${dCols.map(() => '?').join(', ')})`,
+      [out.detaineeId, person.id, periodNo, ref, person.full_name, categoryId, admission, alleged, authority,
+        STATUS_HELD, classificationId, ...dp.vals, userId, now, now]
+    );
+    await insertMovement(db, {
+      id: out.movementId, detaineeId: out.detaineeId, type: MOVE_ADMISSION, date: admission,
+      previous: null, next: authorityLabel(cat.name, authority) || null, by: userId,
+      reason: REASON_REDETENTION + periodNo, related: prevExit?.id ?? null, now,
+    });
+  });
+  return out;
+}
+
+// ---------- person timeline ----------
+export async function listPersonMovements(
+  db: CoreDb, userId: string, personId: string
+): Promise<Record<string, unknown>[]> {
+  await assertCan(db, userId, 'detainees.view');
+  const person = await db.getFirstAsync<{ id: string }>('SELECT id FROM persons WHERE id = ?', [personId]);
+  if (!person) throw new Error('NOT_FOUND');
+  return db.getAllAsync<Record<string, unknown>>(
+    `SELECT m.*, d.period_no, d.reference_number
+       FROM detainee_movements m JOIN detainees d ON d.id = m.detainee_id
+      WHERE d.person_id = ?
+      ORDER BY m.movement_date ASC, m.created_at ASC, m.rowid ASC`,
+    [personId]
+  );
 }
