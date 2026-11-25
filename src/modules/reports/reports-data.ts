@@ -163,10 +163,17 @@ async function buildMemosList(deps: ReportDeps, f: ReportFilters, scope: CaseSco
   };
 }
 
-interface DetRow { reference_number: string; full_name: string; admission_date: number; release_date: number | null; status: string; category_name: string | null; detaining_authority: string; officer_name: string | null; alleged_offense: string }
+interface DetRow { reference_number: string; full_name: string; admission_date: number; release_date: number | null; status: string; category_name: string | null; detaining_authority: string; officer_name: string | null; alleged_offense: string; id_number: string | null; legal_status: string | null; exit_type: string | null; period_no: number | null; classification_name: string | null }
 const DET_SQL = `SELECT d.reference_number, d.full_name, d.admission_date, d.release_date, d.status, d.detaining_authority, d.alleged_offense,
-  c.name AS category_name, u.username AS officer_name
-  FROM detainees d LEFT JOIN detainee_categories c ON c.id = d.category_id LEFT JOIN users u ON u.id = d.officer_id`;
+  c.name AS category_name, u.username AS officer_name,
+  p.id_number AS id_number, d.legal_status AS legal_status, d.exit_type AS exit_type, d.period_no AS period_no, k.name AS classification_name
+  FROM detainees d LEFT JOIN persons p ON p.id = d.person_id LEFT JOIN detainee_categories c ON c.id = d.category_id
+  LEFT JOIN crime_classifications k ON k.id = d.classification_id LEFT JOIN users u ON u.id = d.officer_id`;
+
+function periodText(n: number | null | undefined): string {
+  const p = n && n > 0 ? n : 1;
+  return p > 1 ? p + ' (إعادة احتجاز)' : String(p);
+}
 
 async function buildDetaineesCurrent(deps: ReportDeps, f: ReportFilters) {
   const now = deps.now();
@@ -177,8 +184,8 @@ async function buildDetaineesCurrent(deps: ReportDeps, f: ReportFilters) {
     filtersText: 'المحتجزون الحاليون حتى ' + fmtDate(now), rowCount: rows.length,
     sections: [
       { type: 'kv', heading: 'الملخص', rows: [{ label: 'عدد المحتجزين الحاليين', value: String(rows.length) }] },
-      { type: 'table', heading: 'سجل المحتجزين الحاليين', columns: ['الرقم المرجعي', 'الاسم', 'الفئة', 'جهة الحجز', 'التهمة', 'تاريخ الإيداع', 'المدة (يوم)'],
-        rows: rows.map((r) => [r.reference_number, r.full_name, cell(r.category_name), r.detaining_authority, r.alleged_offense, fmtDate(r.admission_date), String(durationDays(r.admission_date, null, now))]), emptyText: 'لا يوجد محتجزون حالياً.' },
+      { type: 'table', heading: 'سجل المحتجزين الحاليين', columns: ['الرقم المرجعي', 'الاسم', 'الفئة', 'جهة الحجز', 'التهمة', 'تاريخ الإيداع', 'المدة (يوم)', 'رقم الهوية', 'وضع السجين', 'الفترة'],
+        rows: rows.map((r) => [r.reference_number, r.full_name, cell(r.category_name), r.detaining_authority, r.alleged_offense, fmtDate(r.admission_date), String(durationDays(r.admission_date, null, now)), cell(r.id_number), cell(r.legal_status), periodText(r.period_no)]), emptyText: 'لا يوجد محتجزون حالياً.' },
     ] as ReportSection[],
   };
 }
@@ -193,10 +200,10 @@ async function buildAdmissionsReleases(deps: ReportDeps, f: ReportFilters) {
     filtersText: rangeText(from, to), rowCount: adm.length + rel.length,
     sections: [
       { type: 'kv', heading: 'الملخص', rows: [{ label: 'حالات الإيداع', value: String(adm.length) }, { label: 'حالات الإفراج', value: String(rel.length) }] },
-      { type: 'table', heading: 'حالات الإيداع', columns: ['الرقم المرجعي', 'الاسم', 'الفئة', 'جهة الحجز', 'تاريخ الإيداع'],
-        rows: adm.map((r) => [r.reference_number, r.full_name, cell(r.category_name), r.detaining_authority, fmtDate(r.admission_date)]), emptyText: 'لا توجد حالات إيداع.' },
-      { type: 'table', heading: 'حالات الإفراج', columns: ['الرقم المرجعي', 'الاسم', 'تاريخ الإيداع', 'تاريخ الإفراج', 'المدة (يوم)'],
-        rows: rel.map((r) => [r.reference_number, r.full_name, fmtDate(r.admission_date), fmtDate(r.release_date), String(durationDays(r.admission_date, r.release_date, now))]), emptyText: 'لا توجد حالات إفراج.' },
+      { type: 'table', heading: 'حالات الإيداع', columns: ['الرقم المرجعي', 'الاسم', 'الفئة', 'جهة الحجز', 'تاريخ الإيداع', 'الفترة'],
+        rows: adm.map((r) => [r.reference_number, r.full_name, cell(r.category_name), r.detaining_authority, fmtDate(r.admission_date), periodText(r.period_no)]), emptyText: 'لا توجد حالات إيداع.' },
+      { type: 'table', heading: 'حالات الإفراج', columns: ['الرقم المرجعي', 'الاسم', 'تاريخ الإيداع', 'تاريخ الإفراج', 'المدة (يوم)', 'نوع الخروج'],
+        rows: rel.map((r) => [r.reference_number, r.full_name, fmtDate(r.admission_date), fmtDate(r.release_date), String(durationDays(r.admission_date, r.release_date, now)), cell(r.exit_type)]), emptyText: 'لا توجد حالات إفراج.' },
     ] as ReportSection[],
   };
 }
@@ -223,6 +230,7 @@ async function buildDetaineesStats(deps: ReportDeps, f: ReportFilters) {
       ] },
       groupTable('الحاليون حسب الفئة', 'الفئة', current.map((r) => cell(r.category_name))),
       groupTable('الحاليون حسب جهة الحجز', 'جهة الحجز', current.map((r) => r.detaining_authority)),
+      groupTable('الحاليون حسب التصنيف القانوني', 'التصنيف القانوني', current.map((r) => cell(r.classification_name))),
       groupTable('الحاليون حسب المسؤول', 'الضابط المسؤول', current.map((r) => cell(r.officer_name))),
       { type: 'table', heading: 'المتجاوزون للمدة المحددة', columns: ['الرقم المرجعي', 'الاسم', 'تاريخ الإيداع', 'المدة (يوم)'],
         rows: over.map((r) => [r.reference_number, r.full_name, fmtDate(r.admission_date), String(durationDays(r.admission_date, null, now))]), emptyText: 'لا يوجد من تجاوز المدة.' },

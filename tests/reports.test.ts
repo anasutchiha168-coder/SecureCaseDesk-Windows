@@ -60,6 +60,18 @@ beforeEach(async () => {
       ('p1','R-1','محتجز أول','k1',${at(45)},NULL,'سرقة','','أمن المديرية','u-inv','محتجز','',  'u-admin',${at(45)},${at(45)}),
       ('p2','R-2','محتجز ثان','k2',${at(5)},NULL,'احتيال','','النيابة','u-inv','محتجز','','u-admin',${at(5)},${at(5)}),
       ('p3','R-3','مفرج عنه','k1',${at(20)},${at(10)},'اعتداء','','أمن المديرية','u-inv','مفرج عنه','','u-admin',${at(20)},${at(10)});
+    CREATE TABLE persons (id TEXT PRIMARY KEY, id_number TEXT);
+    CREATE TABLE crime_classifications (id TEXT PRIMARY KEY, name TEXT);
+    INSERT INTO persons VALUES ('pr1','123456'),('pr2',NULL);
+    INSERT INTO crime_classifications VALUES ('cl1','تصنيف-سرقة');
+    ALTER TABLE detainees ADD COLUMN person_id TEXT;
+    ALTER TABLE detainees ADD COLUMN period_no INTEGER;
+    ALTER TABLE detainees ADD COLUMN legal_status TEXT;
+    ALTER TABLE detainees ADD COLUMN exit_type TEXT;
+    ALTER TABLE detainees ADD COLUMN classification_id TEXT;
+    UPDATE detainees SET person_id='pr1', period_no=1, legal_status='على ذمة النيابة', classification_id='cl1' WHERE id='p1';
+    UPDATE detainees SET person_id='pr2', period_no=2 WHERE id='p2';
+    UPDATE detainees SET exit_type='تم الافراج عنه' WHERE id='p3';
     INSERT INTO detainee_movements VALUES
       ('mv1','MV-1','p1','إيداع',${at(45)},NULL,'أمن المديرية','u-admin','إيداع أولي','application',NULL,${at(45)}),
       ('mv2','MV-2','p3','إفراج',${at(10)},'أمن المديرية',NULL,'u-admin','انتهاء المدة','application',NULL,${at(10)}),
@@ -140,6 +152,17 @@ describe('صحة البيانات', () => {
       assert.equal(m['R-1'], '45'); assert.equal(m['R-2'], '5');
       assert.ok(!t.rows.some((r) => r[0] === 'R-3'));
     }
+  });
+  test('حقول الشخص والفترة تظهر في تقارير المحتجزين', async () => {
+    const c = (await buildReport(deps, det, 'detainees_current')).sections[1];
+    if (c.type !== 'table') return assert.fail();
+    const row = (ref: string) => c.rows.find((r) => r[0] === ref) as string[];
+    assert.equal(row('R-1')[7], '123456'); assert.equal(row('R-1')[8], 'على ذمة النيابة'); assert.equal(row('R-1')[9], '1');
+    assert.ok(row('R-2')[9].startsWith('2') && row('R-2')[9].includes('إعادة'));
+    const ar = await buildReport(deps, det, 'detainees_admissions_releases');
+    const rel = ar.sections[2]; if (rel.type !== 'table') return assert.fail();
+    assert.equal(rel.rows[0][5], 'تم الافراج عنه');
+    assert.ok(JSON.stringify(await buildReport(deps, det, 'detainees_stats')).includes('تصنيف-سرقة'));
   });
   test('الإيداع والإفراج: مدة المفرج عنه تُحسب حتى تاريخ الإفراج لا حتى اليوم', async () => {
     const d = await buildReport(deps, det, 'detainees_admissions_releases');
