@@ -32,7 +32,7 @@
     "react-native-svg": "15.16.0"
   },
   "devDependencies": {
-    "@types/node": "^22.20.5",
+    "@types/node": "^22.20.6",
     "@types/react": "~19.3.0",
     "tsx": "^4.19.0",
     "typescript": "~6.0.3"
@@ -80,7 +80,8 @@
     "final-report": "python3 scripts/final-report.py run",
     "final-report:view": "python3 scripts/final-report.py report",
     "test:sync-readiness": "tsx --tsconfig tests/tsconfig.json --test tests/sync-readiness.test.ts",
-    "test:cases-actions": "tsx --tsconfig tests/tsconfig.json --test tests/cases-actions.test.ts"
+    "test:cases-actions": "tsx --tsconfig tests/tsconfig.json --test tests/cases-actions.test.ts",
+    "test:excel-import": "tsx --tsconfig tests/tsconfig.json --test tests/excel-import.test.ts"
   },
   "private": true
 }
