@@ -68,3 +68,6 @@ _cleanup_*/
 *.xls
 
 import-data/
+
+# نسخ احتياطية مؤقتة
+.backup-section*/

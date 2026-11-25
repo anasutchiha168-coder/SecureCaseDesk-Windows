@@ -15,6 +15,7 @@ import AttachmentsPanel from '@/components/attachments/AttachmentsPanel';
 import { can } from '@/security/permissions';
 import { ID_TYPES, CASE_ROLES, LEGAL_STATUSES, EXIT_TYPES } from '@/modules/detainees/detainees-lists';
 import { buildDetentionInput } from '@/modules/detainees/detainees-form';
+import { exportAndShareRegister, type RegisterFormat } from '@/services/detainees-register-export.service';
 import { listCrimeClassifications, type ClassificationRow } from '@/services/detainees.service';
 import type { Session } from '@/security/guard';
 import {
@@ -460,6 +461,20 @@ export default function DetaineesScreen() {
     [user?.id, user?.role]
   );
   const canAdd = can(user?.role, 'detainees.manage');
+  // SECURECASEDESK_REGISTER_EXPORT: تصدير معلومية السجناء (Excel) وكشف اليوم (PDF).
+  const [exportingFmt, setExportingFmt] = useState<RegisterFormat | null>(null);
+  const runRegisterExport = useCallback(async (fmt: RegisterFormat) => {
+    if (exportingFmt) return;
+    setExportingFmt(fmt);
+    try {
+      await exportAndShareRegister(session, fmt);
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      Alert.alert('تعذر التصدير', m.includes('SHARE_UNAVAILABLE') ? 'المشاركة غير متاحة على هذا الجهاز.' : 'تعذر إنشاء الملف. حاول مرة أخرى.');
+    } finally {
+      setExportingFmt(null);
+    }
+  }, [exportingFmt, session]);
   const canCorrect = can(user?.role, 'detainees.correct');
 
   const [items, setItems] = useState<DetaineeRow[]>([]);
@@ -1206,6 +1221,8 @@ export default function DetaineesScreen() {
     <Screen>
       <PageHeader title="المحتجزون" subtitle="الملفات والحركة التاريخية وسجل التصحيحات" icon={Users} color={Palette.green}
         actions={<>
+          <IconBtn icon={FileSpreadsheet} label={exportingFmt === 'xlsx' ? 'جارٍ إنشاء ملف Excel...' : 'تصدير معلومية السجناء (Excel)'} color={Palette.green} onPress={() => void runRegisterExport('xlsx')} />
+          <IconBtn icon={FileText} label={exportingFmt === 'pdf' ? 'جارٍ إنشاء ملف PDF...' : 'تصدير كشف المحتجزين (PDF)'} color={Palette.red} onPress={() => void runRegisterExport('pdf')} />
           <IconBtn icon={BookOpen} label="التعليمات والمواد القانونية" color={Palette.gold} onPress={() => router.push('/detainees-instructions' as never)} />
           {canAdd ? <IconBtn icon={FileSpreadsheet} label="استيراد من إكسل" color={Palette.purple} onPress={() => router.push('/detainees-import' as never)} /> : null}
           {canAdd ? <IconBtn icon={UserPlus} label="تسجيل محتجز جديد" solid color={Palette.green} onPress={openForm} /> : null}

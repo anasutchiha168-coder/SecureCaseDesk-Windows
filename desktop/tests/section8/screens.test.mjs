@@ -17,6 +17,7 @@ const resolves = (base) => EXT.some((e) => fs.existsSync(base + e) && fs.statSyn
 const SCREENS = [
   'index', 'setup', 'reports', 'security-check', 'audit-report', 'audit-sync',
   'ai-drafting', 'ai-privacy', 'ai-search', 'ai-settings', 'ai-summary',
+  'detainees-import', 'detainees-instructions',
   '(tabs)/index', '(tabs)/cases', '(tabs)/detainees', '(tabs)/memos', '(tabs)/users', '(tabs)/audit', '(tabs)/settings',
 ];
 

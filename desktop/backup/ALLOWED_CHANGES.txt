@@ -25,3 +25,17 @@ scripts/repo-hygiene.sh
 ui_v3_detainees.py
 ui_v3_memos.py
 ui_v3_reports_attachments.py
+src/modules/backup/backup-restore-prep.ts
+src/modules/backup/backup-types.ts
+src/modules/reports/reports-data.ts
+src/services/detainees.service.ts
+tests/reports.test.ts
+.gitignore
+package-lock.json
+package.json
+src/app/(tabs)/detainees.tsx
+src/database/audit-schema.ts
+src/database/db.ts
+src/database/sync-schema.ts
+src/modules/audit/audit-integration.ts
+src/modules/audit/audit-labels.ts
