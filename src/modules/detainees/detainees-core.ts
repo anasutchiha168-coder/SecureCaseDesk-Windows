@@ -31,7 +31,7 @@ export const PERSON_TEXT_FIELDS = [
   'id_type', 'id_number', 'phone', 'governorate', 'district', 'sub_district',
   'current_residence', 'occupation', 'notes',
 ] as const;
-export const PERIOD_TEXT_FIELDS = ['case_role', 'report_number', 'legal_status', 'legacy_serial'] as const;
+export const PERIOD_TEXT_FIELDS = ['case_role', 'report_number', 'legal_status', 'legacy_serial', 'notes'] as const;
 export const PERIOD_INT_FIELDS = ['age_at_admission', 'prosecution_referral_date'] as const;
 
 export type PersonPatch = Partial<Record<(typeof PERSON_TEXT_FIELDS)[number], string | null>>;

@@ -12,6 +12,8 @@ import { ROW } from '@/constants/rtl';
 import { useAuth } from '@/context/AuthContext';
 import AttachmentsPanel from '@/components/attachments/AttachmentsPanel';
 import { can } from '@/security/permissions';
+import { ID_TYPES, CASE_ROLES, LEGAL_STATUSES } from '@/modules/detainees/detainees-lists';
+import { buildDetentionInput } from '@/modules/detainees/detainees-form';
 import type { Session } from '@/security/guard';
 import {
   createDetention,
@@ -477,6 +479,23 @@ export default function DetaineesScreen() {
   const [day, setDay] = useState('');
   const [month, setMonth] = useState('');
   const [year, setYear] = useState('');
+  const [fIdType, setFIdType] = useState<string | null>(null);
+  const [fIdNumber, setFIdNumber] = useState('');
+  const [fPhone, setFPhone] = useState('');
+  const [fAge, setFAge] = useState('');
+  const [fGov, setFGov] = useState('');
+  const [fDistrict, setFDistrict] = useState('');
+  const [fSub, setFSub] = useState('');
+  const [fResidence, setFResidence] = useState('');
+  const [fJob, setFJob] = useState('');
+  const [fRole, setFRole] = useState<string | null>(null);
+  const [fReport, setFReport] = useState('');
+  const [fStatus, setFStatus] = useState<string | null>(null);
+  const [fRefD, setFRefD] = useState('');
+  const [fRefM, setFRefM] = useState('');
+  const [fRefY, setFRefY] = useState('');
+  const [fNotes, setFNotes] = useState('');
+  const [fListPick, setFListPick] = useState<'id' | 'role' | 'status' | null>(null);
 
   const loadStats = useCallback(async () => {
     try {
@@ -547,6 +566,11 @@ export default function DetaineesScreen() {
     setDay(t.d);
     setMonth(t.m);
     setYear(t.y);
+    setFIdType(null); setFIdNumber(''); setFPhone(''); setFAge('');
+    setFGov(''); setFDistrict(''); setFSub(''); setFResidence(''); setFJob('');
+    setFRole(null); setFReport(''); setFStatus(null);
+    setFRefD(''); setFRefM(''); setFRefY(''); setFNotes('');
+    setFListPick(null);
     setFormError('');
   };
 
@@ -570,6 +594,7 @@ export default function DetaineesScreen() {
   const closeForm = () => {
     if (saving) return;
     setShowPicker(false);
+    setFListPick(null);
     setShowForm(false);
   };
 
@@ -580,37 +605,20 @@ export default function DetaineesScreen() {
       return;
     }
 
-    const name = fullName.trim();
-    const ref = normalizeDigits(refNumber.trim());
-    const alleged = offense.trim();
-    const detainingAuthority = authority.trim();
-
-    if (!name) { setFormError('الاسم الكامل مطلوب'); return; }
-    if (!ref) { setFormError('الرقم المرجعي مطلوب'); return; }
-    if (!alleged) { setFormError('التهمة المنسوبة مطلوبة'); return; }
-    if (!categoryId) { setFormError('اختر فئة المحتجز'); return; }
-
-    const admissionTs = parseDate(normalizeDigits(day.trim()), normalizeDigits(month.trim()), normalizeDigits(year.trim()));
-    if (admissionTs === null) {
-      setFormError('تاريخ الدخول غير صحيح، تأكد من اليوم والشهر والسنة');
-      return;
-    }
-    if (admissionTs > endOfToday()) {
-      setFormError('تاريخ الدخول لا يمكن أن يكون في المستقبل');
-      return;
-    }
+    const built = buildDetentionInput({
+      fullName, refNumber, offense, authority, categoryId,
+      admission: { d: day, m: month, y: year },
+      idType: fIdType, idNumber: fIdNumber, phone: fPhone, age: fAge,
+      governorate: fGov, district: fDistrict, subDistrict: fSub, residence: fResidence, occupation: fJob,
+      caseRole: fRole, reportNumber: fReport, legalStatus: fStatus,
+      referral: { d: fRefD, m: fRefM, y: fRefY }, notes: fNotes,
+    });
+    if (!built.ok) { setFormError(built.error); return; }
 
     setSaving(true);
     setFormError('');
     try {
-      await createDetention(session, {
-        fullName: name,
-        referenceNumber: ref,
-        allegedOffense: alleged,
-        categoryId,
-        detainingAuthority,
-        admissionDate: admissionTs,
-      });
+      await createDetention(session, built.input);
 
       setShowPicker(false);
       setShowForm(false);
@@ -876,6 +884,12 @@ export default function DetaineesScreen() {
   };
 
   const selectedCategory = categories.find((c) => c.id === categoryId);
+  const pickListValue = (value: string | null) => {
+    if (fListPick === 'id') setFIdType(value);
+    else if (fListPick === 'role') setFRole(value);
+    else if (fListPick === 'status') setFStatus(value);
+    setFListPick(null);
+  };
   const transferCategoryName =
     categories.find((c) => c.id === aCategoryId)?.name ??
     (detail && aCategoryId === detail.category_id ? detail.category_name : null);
@@ -1126,16 +1140,51 @@ export default function DetaineesScreen() {
           <Btn label="إلغاء" variant="ghost" onPress={closeForm} disabled={saving} />
         </>}>
         <ErrorBanner text={formError} />
+        <SectionTitle title="بيانات الشخص" top={0} />
         <Field label="الاسم الكامل *" value={fullName} onChangeText={setFullName} editable={!saving} placeholder="الاسم الرباعي" />
+        <SelectField label="نوع الهوية" value={fIdType} placeholder="اختر نوع الهوية" onPress={() => setFListPick('id')} disabled={saving} />
+        <Field label="رقم الهوية" value={fIdNumber} onChangeText={setFIdNumber} editable={!saving} placeholder="اختياري" keyboardType="number-pad" />
+        <Field label="رقم الهاتف" value={fPhone} onChangeText={setFPhone} editable={!saving} placeholder="اختياري" keyboardType="phone-pad" />
+        <Field label="العمر" value={fAge} onChangeText={setFAge} editable={!saving} placeholder="اختياري" keyboardType="number-pad" maxLength={3} />
+        <Field label="المحافظة" value={fGov} onChangeText={setFGov} editable={!saving} placeholder="اختياري" />
+        <Field label="المديرية" value={fDistrict} onChangeText={setFDistrict} editable={!saving} placeholder="اختياري" />
+        <Field label="العزلة" value={fSub} onChangeText={setFSub} editable={!saving} placeholder="اختياري" />
+        <Field label="السكن الحالي" value={fResidence} onChangeText={setFResidence} editable={!saving} placeholder="اختياري" />
+        <Field label="العمل" value={fJob} onChangeText={setFJob} editable={!saving} placeholder="اختياري" />
+        <SectionTitle title="بيانات الاحتجاز" />
         <Field label="الرقم المرجعي *" value={refNumber} onChangeText={setRefNumber} editable={!saving} placeholder="الرقم المرجعي الفريد" autoCapitalize="characters" />
         <Field label="التهمة المنسوبة *" value={offense} onChangeText={setOffense} editable={!saving} placeholder="التهمة" />
+        <SelectField label="صفة المحتجز في القضية" value={fRole} placeholder="اختر الصفة" onPress={() => setFListPick('role')} disabled={saving} />
+        <Field label="رقم البلاغ" value={fReport} onChangeText={setFReport} editable={!saving} placeholder="اختياري" />
         <Field label="جهة الحجز" value={authority} onChangeText={setAuthority} editable={!saving} placeholder="اختياري" />
         <SelectField label="الفئة *" value={selectedCategory?.name} placeholder="اختر الفئة" onPress={() => setShowPicker(true)} disabled={saving} />
         <DateFields label="تاريخ الدخول *" d={day} m={month} y={year} setD={setDay} setM={setMonth} setY={setYear} editable={!saving} />
+        <SelectField label="وضع المحتجز" value={fStatus} placeholder="اختر الوضع" onPress={() => setFListPick('status')} disabled={saving} />
+        <DateFields label="تاريخ إحالة الملف إلى النيابة (اختياري)" d={fRefD} m={fRefM} y={fRefY} setD={setFRefD} setM={setFRefM} setY={setFRefY} editable={!saving} />
+        <Field label="ملاحظات" value={fNotes} onChangeText={setFNotes} editable={!saving} placeholder="مثال: سبب التأخير، تمديد بتاريخ..." multiline />
       </Sheet>
 
       <Sheet visible={showPicker} onClose={() => setShowPicker(false)} title="اختر الفئة">
         {categoryList(categoryId, (c) => { setCategoryId(c.id); setShowPicker(false); })}
+      </Sheet>
+
+      <Sheet visible={fListPick !== null} onClose={() => setFListPick(null)}
+        title={fListPick === 'id' ? 'نوع الهوية' : fListPick === 'role' ? 'صفة المحتجز في القضية' : 'وضع المحتجز'}>
+        <View style={{ gap: 8 }}>
+          {(fListPick === 'id' ? ID_TYPES : fListPick === 'role' ? CASE_ROLES : LEGAL_STATUSES).map((opt) => {
+            const cur = fListPick === 'id' ? fIdType : fListPick === 'role' ? fRole : fStatus;
+            const on = opt === cur;
+            return (
+              <Card key={opt} accent={on ? Palette.cyan : undefined} onPress={() => pickListValue(opt)} label={opt}>
+                <View style={{ flexDirection: ROW, alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={[Type.bodyLg, { color: on ? Palette.cyan : Colors.textPrimary }]}>{opt}</Text>
+                  {on ? <Check color={Palette.cyan} size={18} /> : null}
+                </View>
+              </Card>
+            );
+          })}
+          <Btn label="مسح الاختيار" variant="ghost" onPress={() => pickListValue(null)} />
+        </View>
       </Sheet>
 
       {/* إفراج / نقل */}
