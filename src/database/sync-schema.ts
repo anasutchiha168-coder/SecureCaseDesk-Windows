@@ -18,6 +18,7 @@ export const SYNCABLE_TABLES: readonly { table: string; mutable: boolean }[] = [
   { table: 'departments', mutable: true },
   { table: 'cases', mutable: true },
   { table: 'memos', mutable: true },
+  { table: 'persons', mutable: true },
   { table: 'detainees', mutable: true },
   { table: 'detainee_movements', mutable: false },
   { table: 'correction_history', mutable: false },

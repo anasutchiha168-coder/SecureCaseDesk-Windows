@@ -62,3 +62,7 @@ tools/legacy-cleanup/
 _cleanup_*/
 *.pre_stageB
 *.pre_phase3
+
+# بيانات حساسة: لا ترفع ملفات الإكسل
+*.xlsx
+*.xls

@@ -615,17 +615,23 @@ export default function DetaineesScreen() {
       }
 
       const detaineeId = Crypto.randomUUID();
+      const personId = Crypto.randomUUID();
       const movementId = Crypto.randomUUID();
       const now = Date.now();
       const movementNumber = 'MOV-' + now + '-' + Math.floor(1000 + Math.random() * 9000);
 
       await db.withTransactionAsync(async () => {
         await db.runAsync(
+          `INSERT INTO persons (id, full_name, created_by, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?)`,
+          [personId, name, user.id, now, now]
+        );
+        await db.runAsync(
           `INSERT INTO detainees
-             (id, reference_number, full_name, category_id, admission_date,
+             (id, person_id, period_no, reference_number, full_name, category_id, admission_date,
               alleged_offense, detaining_authority, status, created_by, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [detaineeId, ref, name, categoryId, admissionTs, alleged, detainingAuthority, 'محتجز', user.id, now, now]
+           VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [detaineeId, personId, ref, name, categoryId, admissionTs, alleged, detainingAuthority, 'محتجز', user.id, now, now]
         );
         await db.runAsync(
           `INSERT INTO detainee_movements

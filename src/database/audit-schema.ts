@@ -28,7 +28,14 @@ const AUDIT_TABLE_FIELDS: Record<string, string[]> = {
     'reference_number', 'full_name', 'category_id',
     'admission_date', 'release_date', 'alleged_offense',
     'offense_details', 'detaining_authority',
-    'officer_id', 'status', 'notes', 'created_by'
+    'officer_id', 'status', 'notes', 'created_by',
+    'person_id', 'period_no', 'age_at_admission', 'case_role', 'report_number',
+    'legal_status', 'prosecution_referral_date', 'exit_type', 'exit_procedure',
+    'exit_directive_source', 'legacy_serial'
+  ],
+  persons: [
+    'full_name', 'id_type', 'id_number', 'phone', 'governorate', 'district',
+    'sub_district', 'current_residence', 'occupation', 'notes', 'created_by'
   ],
   detainee_movements: [
     'movement_number', 'detainee_id', 'movement_type',

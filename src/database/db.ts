@@ -4,6 +4,7 @@ import * as Crypto from 'expo-crypto';
 import { FileMode } from 'expo-file-system';
 import { initAuditSchema } from './audit-schema';
 import { initSyncSchema } from './sync-schema';
+import { initPersonsSchema } from './persons-schema';
 import { initCaseHistorySchema } from '../modules/cases/cases-schema';
 import { initAttachmentsSchema } from '../modules/attachments/attachments-schema';
 import { fsFile } from '@/modules/backup/fs-uri'; // SECURECASEDESK_FILE_URI_FIX
@@ -398,6 +399,9 @@ export async function initDatabase() {
 
   // ===== المرحلة 3: سجل تعديل القضايا (للإلحاق فقط) =====
   await initCaseHistorySchema(database);
+
+  // ===== v2.2 / وحدة المحتجزين / القسم 2: الأشخاص وفترات الاحتجاز (قبل التدقيق ليلتقط مشغلاتها) =====
+  await initPersonsSchema(database);
 
   // ===== المرحلة 9 / القسم 1: المرفقات (قبل التدقيق ليلتقط مشغلاتها) =====
   await initAttachmentsSchema(database);
