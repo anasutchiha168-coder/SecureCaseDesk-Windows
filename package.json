@@ -81,7 +81,8 @@
     "final-report:view": "python3 scripts/final-report.py report",
     "test:sync-readiness": "tsx --tsconfig tests/tsconfig.json --test tests/sync-readiness.test.ts",
     "test:cases-actions": "tsx --tsconfig tests/tsconfig.json --test tests/cases-actions.test.ts",
-    "test:excel-import": "tsx --tsconfig tests/tsconfig.json --test tests/excel-import.test.ts"
+    "test:excel-import": "tsx --tsconfig tests/tsconfig.json --test tests/excel-import.test.ts",
+    "test:detainees-integrity": "tsx --tsconfig tests/tsconfig.json --test tests/detainees-integrity.test.ts"
   },
   "private": true
 }
