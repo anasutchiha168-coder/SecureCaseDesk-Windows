@@ -6,13 +6,19 @@ import {
   Users, UserPlus, UserMinus, LogIn, LogOut, ArrowLeftRight, ArrowLeft, Pencil, Check, Clock, CalendarDays,
   Tag, MapPin, ShieldCheck, History, UserRound, ArrowUpDown, Paperclip, Lock, AlertTriangle, Activity, Layers, FileText,
 } from 'lucide-react-native';
-import * as Crypto from 'expo-crypto';
 import { getDb } from '@/database/db';
 import { Colors, Palette, Type, tint, Glow } from '@/constants/theme';
 import { ROW } from '@/constants/rtl';
 import { useAuth } from '@/context/AuthContext';
 import AttachmentsPanel from '@/components/attachments/AttachmentsPanel';
-import { can, assertUserCan } from '@/security/permissions';
+import { can } from '@/security/permissions';
+import type { Session } from '@/security/guard';
+import {
+  createDetention,
+  releasePeriod,
+  transferPeriod,
+  correctPeriodField,
+} from '@/services/detainees-actions.service';
 import {
   Screen, PageHeader, IconBtn, Card, Pill, MetaItem, StatStrip, SearchField, FilterChips, Btn, Field, SelectField,
   Sheet, ListSkeleton, SectionTitle, type MiniStat, type ChipOpt,
@@ -182,16 +188,6 @@ function todayParts() {
 function fieldLabel(key: string): string {
   const f = CORRECTION_FIELDS.find((x) => x.key === key);
   return f ? f.label : key;
-}
-
-function authorityLabel(categoryName: string, authority: string): string {
-  const a = authority.trim();
-  if (categoryName && a) return categoryName + ' - ' + a;
-  return categoryName || a;
-}
-
-function makeMovementNumber(): string {
-  return 'MOV-' + Date.now() + '-' + Math.floor(1000 + Math.random() * 9000);
 }
 
 function statusColor(status: string): string {
@@ -450,6 +446,10 @@ const OverviewTab = React.memo(function OverviewTab({ detail, transfers }: { det
 /* ───────────── الشاشة ───────────── */
 export default function DetaineesScreen() {
   const { user } = useAuth();
+  const session = useMemo<Session | null>(
+    () => (user ? { userId: user.id, role: user.role } : null),
+    [user?.id, user?.role]
+  );
   const canAdd = can(user?.role, 'detainees.manage');
   const canCorrect = can(user?.role, 'detainees.correct');
 
@@ -603,48 +603,13 @@ export default function DetaineesScreen() {
     setSaving(true);
     setFormError('');
     try {
-      const db = await getDb();
-      await assertUserCan(db, user.id, 'detainees.manage');
-      const dup = await db.getFirstAsync<{ id: string }>(
-        'SELECT id FROM detainees WHERE reference_number = ?',
-        [ref]
-      );
-      if (dup) {
-        setFormError('الرقم المرجعي مستخدم لمحتجز آخر');
-        return;
-      }
-
-      const detaineeId = Crypto.randomUUID();
-      const personId = Crypto.randomUUID();
-      const movementId = Crypto.randomUUID();
-      const now = Date.now();
-      const movementNumber = 'MOV-' + now + '-' + Math.floor(1000 + Math.random() * 9000);
-
-      await db.withTransactionAsync(async () => {
-        await db.runAsync(
-          `INSERT INTO persons (id, full_name, created_by, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?)`,
-          [personId, name, user.id, now, now]
-        );
-        await db.runAsync(
-          `INSERT INTO detainees
-             (id, person_id, period_no, reference_number, full_name, category_id, admission_date,
-              alleged_offense, detaining_authority, status, created_by, created_at, updated_at)
-           VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [detaineeId, personId, ref, name, categoryId, admissionTs, alleged, detainingAuthority, 'محتجز', user.id, now, now]
-        );
-        await db.runAsync(
-          `INSERT INTO detainee_movements
-             (id, movement_number, detainee_id, movement_type, movement_date,
-              previous_authority, new_authority, executed_by, reason, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            movementId, movementNumber, detaineeId, 'إيداع', admissionTs,
-            null,
-            authorityLabel(categories.find((c) => c.id === categoryId)?.name ?? '', detainingAuthority) || null,
-            user.id, 'تسجيل دخول المحتجز', now,
-          ]
-        );
+      await createDetention(session, {
+        fullName: name,
+        referenceNumber: ref,
+        allegedOffense: alleged,
+        categoryId,
+        detainingAuthority,
+        admissionDate: admissionTs,
       });
 
       setShowPicker(false);
@@ -657,7 +622,7 @@ export default function DetaineesScreen() {
       const msg = String((e as Error)?.message ?? '');
       if (msg.includes('FORBIDDEN')) {
         setFormError('ليست لديك صلاحية تسجيل المحتجزين');
-      } else if (msg.includes('UNIQUE') && msg.includes('reference_number')) {
+      } else if (msg.includes('DUPLICATE_REFERENCE') || (msg.includes('UNIQUE') && msg.includes('reference_number'))) {
         setFormError('الرقم المرجعي مستخدم لمحتجز آخر');
       } else {
         setFormError('تعذر الحفظ ولم يتم تسجيل أي بيانات، حاول مرة أخرى');
@@ -815,51 +780,18 @@ export default function DetaineesScreen() {
     setASaving(true);
     setAError('');
     try {
-      const db = await getDb();
-      await assertUserCan(db, user.id, 'detainees.manage');
-      const last = await db.getFirstAsync<{ last_date: number | null }>(
-        'SELECT MAX(movement_date) AS last_date FROM detainee_movements WHERE detainee_id = ?',
-        [detail.id]
-      );
-      if (last && last.last_date !== null && ts < last.last_date) {
-        setAError('التاريخ لا يمكن أن يسبق آخر حركة مسجلة بتاريخ ' + formatDate(last.last_date));
-        return;
+      if (type === 'release') {
+        await releasePeriod(session, { detaineeId: detail.id, releaseDate: ts, reason });
+      } else {
+        if (!target) throw new Error('NO_TARGET');
+        await transferPeriod(session, {
+          detaineeId: detail.id,
+          targetCategoryId: target.id,
+          newAuthority,
+          transferDate: ts,
+          reason,
+        });
       }
-
-      const now = Date.now();
-      const previousLabel = authorityLabel(detail.category_name ?? '', detail.detaining_authority);
-      const nextLabel = type === 'transfer' && target ? authorityLabel(target.name, newAuthority) : null;
-
-      await db.withTransactionAsync(async () => {
-        if (type === 'release') {
-          const res = await db.runAsync(
-            `UPDATE detainees SET status = 'مفرج عنه', release_date = ?, updated_at = ?
-             WHERE id = ? AND status = 'محتجز' AND release_date IS NULL`,
-            [ts, now, detail.id]
-          );
-          if (res.changes === 0) throw new Error('STATE_CHANGED');
-        } else {
-          if (!target) throw new Error('NO_TARGET');
-          const res = await db.runAsync(
-            `UPDATE detainees SET category_id = ?, detaining_authority = ?, updated_at = ?
-             WHERE id = ? AND status = 'محتجز'`,
-            [target.id, newAuthority, now, detail.id]
-          );
-          if (res.changes === 0) throw new Error('STATE_CHANGED');
-        }
-        await db.runAsync(
-          `INSERT INTO detainee_movements
-             (id, movement_number, detainee_id, movement_type, movement_date,
-              previous_authority, new_authority, executed_by, reason, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            Crypto.randomUUID(), makeMovementNumber(), detail.id,
-            type === 'release' ? 'إفراج' : 'نقل', ts,
-            previousLabel || null, nextLabel || null, user.id,
-            reason || (type === 'release' ? 'إفراج عن المحتجز' : 'نقل المحتجز'), now,
-          ]
-        );
-      });
 
       setShowTransferPicker(false);
       setAction(null);
@@ -870,6 +802,10 @@ export default function DetaineesScreen() {
       const msg = String((e as Error)?.message ?? '');
       if (msg.includes('FORBIDDEN')) {
         setAError('ليست لديك صلاحية تنفيذ هذا الإجراء');
+      } else if (msg.includes('DATE_BEFORE_ADMISSION')) {
+        setAError('تاريخ الإجراء لا يمكن أن يسبق تاريخ الدخول');
+      } else if (msg.includes('DATE_BEFORE_LAST_MOVEMENT')) {
+        setAError('تاريخ الإجراء لا يمكن أن يسبق آخر حركة مسجلة');
       } else if (msg.includes('STATE_CHANGED')) {
         setAError('تغيّرت حالة المحتجز ولم يتم تسجيل أي حركة');
         await refreshAfterAction(detail.id);
@@ -978,71 +914,10 @@ export default function DetaineesScreen() {
   ) => {
     if (!detail || !user || !canCorrect) return;
     const detaineeId = detail.id;
-    const userId = user.id;
     setCSaving(true);
     setCError('');
     try {
-      const db = await getDb();
-      const now = Date.now();
-      const d = new Date();
-      const startToday = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-
-      await db.withTransactionAsync(async () => {
-        await assertUserCan(db, userId, 'detainees.correct');
-
-        const current = await db.getFirstAsync<{ value: string | null }>(
-          field === 'full_name'
-            ? 'SELECT full_name AS value FROM detainees WHERE id = ?'
-            : 'SELECT alleged_offense AS value FROM detainees WHERE id = ?',
-          [detaineeId]
-        );
-        if (!current) throw new Error('NOT_FOUND');
-        if ((current.value ?? '') !== previous) throw new Error('VALUE_CHANGED');
-
-        const res =
-          field === 'full_name'
-            ? await db.runAsync(
-                'UPDATE detainees SET full_name = ?, updated_at = ? WHERE id = ?',
-                [next, now, detaineeId]
-              )
-            : await db.runAsync(
-                'UPDATE detainees SET alleged_offense = ?, updated_at = ? WHERE id = ?',
-                [next, now, detaineeId]
-              );
-        if (res.changes === 0) throw new Error('NOT_FOUND');
-
-        const original = await db.getFirstAsync<{ id: string }>(
-          `SELECT id FROM detainee_movements
-           WHERE detainee_id = ? AND movement_type = ?
-           ORDER BY movement_date ASC, created_at ASC, rowid ASC LIMIT 1`,
-          [detaineeId, 'إيداع']
-        );
-        const last = await db.getFirstAsync<{ last_date: number | null }>(
-          'SELECT MAX(movement_date) AS last_date FROM detainee_movements WHERE detainee_id = ?',
-          [detaineeId]
-        );
-        const moveDate = Math.max(startToday, last?.last_date ?? 0);
-        const movementId = Crypto.randomUUID();
-
-        await db.runAsync(
-          `INSERT INTO detainee_movements
-             (id, movement_number, detainee_id, movement_type, movement_date,
-              previous_authority, new_authority, executed_by, reason, related_movement_id, created_at)
-           VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?)`,
-          [
-            movementId, makeMovementNumber(), detaineeId, 'تصحيح', moveDate,
-            userId, 'تصحيح ' + fieldLabel(field) + ': ' + reason, original?.id ?? null, now,
-          ]
-        );
-
-        await db.runAsync(
-          `INSERT INTO correction_history
-             (id, detainee_id, field_name, previous_value, new_value, reason,
-              executed_by, related_movement_id, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [Crypto.randomUUID(), detaineeId, field, previous, next, reason, userId, movementId, now]
-        );
-      });
+      await correctPeriodField(session, { detaineeId, field, previous, next, reason });
 
       setShowCorrection(false);
       await refreshAfterAction(detaineeId);
