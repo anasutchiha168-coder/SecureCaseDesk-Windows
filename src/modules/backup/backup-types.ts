@@ -31,7 +31,7 @@ export const REQUIRED_TABLES = [
 ] as const;
 
 // جداول تُنشأ عند الحاجة فقط (audit-outbox.ts). تُجرد إن وُجدت ولا يُعدّ غيابها خللاً.
-export const OPTIONAL_TABLES = ['audit_sync_outbox', 'audit_sync_state'] as const;
+export const OPTIONAL_TABLES = ['audit_sync_outbox', 'audit_sync_state', 'persons', 'crime_classifications'] as const;
 
 // ===== أسرار SecureStore =====
 // لا تُحفظ القيم في أي تقرير: الاسم والوجود فقط.

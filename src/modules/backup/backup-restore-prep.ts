@@ -34,7 +34,7 @@ export const RESTORE_PLAN_TTL_MS = 15 * 60 * 1000;
 export const SAFETY_BACKUP_PREFIX = 'PreRestore-';
 export const OLD_BACKUP_WARNING_DAYS = 30;
 export const COUNTED_TABLES = [
-  'users', 'departments', 'cases', 'memos', 'detainees', 'detainee_movements',
+  'users', 'departments', 'cases', 'memos', 'persons', 'detainees', 'crime_classifications', 'detainee_movements',
   'correction_history', 'attachments', 'audit_logs',
 ] as const;
 

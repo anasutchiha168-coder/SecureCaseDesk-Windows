@@ -51,6 +51,7 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   cases: 'القضايا',
   memos: 'المذكرات',
   memo_types: 'أنواع المذكرات',
+  persons: 'الأشخاص',
   detainees: 'المحتجزون',
   detainee_categories: 'فئات المحتجزين',
   crime_classifications: 'التصنيفات القانونية للجرائم',
