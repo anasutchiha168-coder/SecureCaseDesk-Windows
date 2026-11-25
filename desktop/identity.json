@@ -1,0 +1,7 @@
+{
+  "_تحذير": "هذا الملف هو بصمة التطبيق. لا تغيّر appId ولا productName أبداً بعد أول إصدار منشور، وإلا يُثبَّت الإصدار الجديد كبرنامج منفصل بدل أن يحدّث القديم.",
+  "appId": "gov.moi.hajjah.securecasedesk",
+  "productName": "SecureCaseDesk",
+  "dataFolderName": "SecureCaseDesk",
+  "installerPerMachine": false
+}

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -38,7 +39,7 @@ test('app:info يعيد معلومات بلا مسارات', async () => {
   const { handlers, ev } = setup();
   const r = await handlers.get('scd:app:info')(ev(), undefined);
   assert.equal(r.ok, true);
-  assert.equal(r.data.version, '2.2.0');
+  assert.equal(r.data.version, JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version);
   assert.equal(r.data.platform, 'win32');
   assert.ok(!JSON.stringify(r.data).match(/[A-Z]:\\|\/home\//));
 });

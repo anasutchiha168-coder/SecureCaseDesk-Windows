@@ -32,6 +32,8 @@
     "test:section8": "node --test \"tests/section8/*.test.mjs\"",
     "run:section8": "node scripts/run-section8.mjs",
     "verify:section8": "node scripts/verify-backup.mjs && node scripts/check-shims.mjs && node scripts/check-rnweb-compat.mjs && node --test \"tests/electron/*.test.mjs\" && node --experimental-strip-types --test \"tests/web/*.test.mjs\" && node --test \"tests/section8/*.test.mjs\"",
+    "stamp": "node scripts/stamp-build.mjs",
+    "release:bump": "node scripts/bump-version.mjs",
     "dist:win": "node scripts/dist-win.mjs",
     "dist:dir": "node scripts/dist-win.mjs --dir",
     "verify:package": "node scripts/verify-package.mjs",

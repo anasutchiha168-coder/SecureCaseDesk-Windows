@@ -4,6 +4,10 @@ const { ScdError } = require('../lib/errors.cjs');
 const { none } = require('../lib/validate.cjs');
 
 // ctx: { app, getWindow(), versions }   (تُحقن للاختبار بدون Electron)
+function readBuildInfo() {
+  try { return require('../build-info.json'); } catch { return null; }
+}
+
 function windowState(win) {
   return { maximized: win.isMaximized(), fullScreen: win.isFullScreen(), focused: win.isFocused() };
 }
@@ -26,6 +30,7 @@ function buildHandlers(ctx) {
     arch: ctx.arch,
     packaged: ctx.app.isPackaged,
     locale: ctx.app.getLocale(),
+    build: readBuildInfo(),
   }));
   // بديل expo-updates.reloadAsync: إعادة تحميل الواجهة فقط (الحالة في الذاكرة تُفقد، القاعدة والملفات لا).
   add('scd:app:reload', none, () => { win().webContents.reload(); return null; });

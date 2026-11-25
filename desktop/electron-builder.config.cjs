@@ -3,10 +3,11 @@
 // الإصدار والاسم يُقرآن من package.json. لا توقيع رقمي (لا شهادة)؛ SmartScreen قد يحذّر عند أول تشغيل.
 // مجلد البيانات (للمثبّت والـ Portable معاً): %APPDATA%\SecureCaseDesk  (مفاتيح DPAPI مربوطة بحساب المستخدم، فلا نخزّن بجوار الـ exe).
 const pkg = require('./package.json');
+const identity = require('./identity.json'); // بصمة التطبيق الثابتة (لا تُغيَّر)
 
 module.exports = {
-  appId: 'gov.moi.hajjah.securecasedesk', // نفس معرّف Android/app.json
-  productName: 'SecureCaseDesk',
+  appId: identity.appId, // نفس معرّف Android/app.json — ثابت دائماً
+  productName: identity.productName,
   copyright: 'Copyright © 2026 SecureCaseDesk',
   buildVersion: pkg.version,
   directories: { output: 'release', buildResources: 'build' },
@@ -35,7 +36,7 @@ module.exports = {
   nsis: {
     artifactName: 'SecureCaseDesk-Setup.${ext}',
     oneClick: false,
-    perMachine: false,
+    perMachine: identity.installerPerMachine,
     allowElevation: true,
     allowToChangeInstallationDirectory: true,
     createDesktopShortcut: 'always',

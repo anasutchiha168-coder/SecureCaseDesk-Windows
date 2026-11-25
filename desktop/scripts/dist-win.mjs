@@ -21,6 +21,7 @@ const run = (cmd, a, env = {}) => {
 };
 
 if (!existsSync(join(desktop, 'build', 'icon.png'))) fail('build/icon.png مفقودة');
+run('node', ['scripts/stamp-build.mjs']);
 if (!args.has('--skip-web')) run('npm', ['run', 'build:web']);
 if (!existsSync(join(desktop, 'web-dist', 'index.html'))) fail('web-dist/index.html مفقود — شغّل build:web');
 

@@ -39,3 +39,4 @@ src/database/db.ts
 src/database/sync-schema.ts
 src/modules/audit/audit-integration.ts
 src/modules/audit/audit-labels.ts
+app.json

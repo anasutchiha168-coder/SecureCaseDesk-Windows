@@ -6,3 +6,4 @@ web-dist/
 .stage/
 *.log
 section8-logs/
+electron/build-info.json
