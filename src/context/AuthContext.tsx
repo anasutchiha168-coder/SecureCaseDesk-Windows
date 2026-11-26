@@ -77,33 +77,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const userRef = useRef<AuthUser | null>(null);
   useEffect(() => { userRef.current = user; }, [user]);
 
+  // SECURECASEDESK_REQUIRE_LOGIN: لا تُستعاد الجلسة بين مرات فتح التطبيق؛ كل تشغيل جديد يتطلب تسجيل دخول.
   const checkSession = useCallback(async () => {
     try {
-      const storedId = await SecureStore.getItemAsync(SESSION_USER_ID_KEY);
-      if (!storedId) {
-        setUser(null);
-        return;
-      }
-      const db = await getDb();
-      const row = await db.getFirstAsync<AuthUser>(
-        'SELECT id, username, role, created_at, department_id, is_active, last_login FROM users WHERE id = ?',
-        [storedId]
-      );
-      if (row && Number(row.is_active ?? 1) === 1) {
-        setUser(row);
-        await setAuditActor({ id: row.id, username: row.username });
-        // فتح التطبيق من جديد بعد إغلاقه: إن كانت البصمة مفعّلة لهذا الحساب يبدأ التطبيق مقفلاً.
-        if ((await getEnrolledUserId()) === row.id) setIsLocked(true);
-      } else {
-        await SecureStore.deleteItemAsync(SESSION_USER_ID_KEY);
-        setUser(null);
-        await setAuditActor(null);
-      }
-    } catch (err) {
-      console.error('[AuthContext] checkSession error:', err);
-      setUser(null);
-      await setAuditActor(null).catch(() => {});
+      await SecureStore.deleteItemAsync(SESSION_USER_ID_KEY).catch(() => {});
     } finally {
+      setUser(null);
+      setIsLocked(false);
+      await setAuditActor(null).catch(() => {});
       setIsLoading(false);
     }
   }, []);
@@ -130,9 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { password_hash, ...safeUser } = row;
     setUser({ ...safeUser, last_login: loginAt });
     setIsLocked(false);
-    onStage('save_session');
-    await SecureStore.setItemAsync(SESSION_USER_ID_KEY, safeUser.id);
-    onStage('audit_actor');
+    onStage('audit_actor'); // الجلسة في الذاكرة فقط
 
     // يُضبط سياق المنفّذ أولاً حتى تُنسب عملية "تسجيل الدخول" نفسها إليه،
     // ويُسجَّل الدخول كحدث تدقيق صريح (لا يلتقطه أي trigger لأنه ليس تعديل سجل).
